@@ -89,7 +89,7 @@ const CursorPreviewBrick = () => {
     setIsVisible(true);
   });
 
-  // Handle mouse move events
+// Handle mouse move events
   React.useEffect(() => {
     const handleMouseMove = (event) => {
       if (buildMode !== "place" || !brickGeometry) {
@@ -107,38 +107,49 @@ const CursorPreviewBrick = () => {
       // Update raycaster
       raycaster.current.setFromCamera(mouse.current, camera);
 
-      // Create a ground plane for intersection
-      const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.5);
+      // Create a baseplate surface plane for intersection
+      const baseplateY = BASEPLATE_HEIGHT / 2;
+      const baseplatePlane = new THREE.Plane(
+        new THREE.Vector3(0, 1, 0),
+        -baseplateY
+      );
       const target = new THREE.Vector3();
 
-      // Get intersection with ground plane
-      if (raycaster.current.ray.intersectPlane(groundPlane, target)) {
-        // Snap to grid
+      // Get intersection with baseplate surface
+      if (raycaster.current.ray.intersectPlane(baseplatePlane, target)) {
+        // Snap to stud grid - ALL bricks snap to stud positions
         const gridSize = LEGO_UNIT;
         const snappedX = Math.round(target.x / gridSize) * gridSize;
         const snappedZ = Math.round(target.z / gridSize) * gridSize;
-        const snappedY = -0.5 + BRICK_HEIGHT / 2; // Place on surface
 
-        setMousePosition([snappedX, snappedY, snappedZ]);
-        setIsVisible(true);
+        // Calculate brick bounds for boundary checking
+        const dims = BRICK_TYPES[selectedBrickType];
+        const brickHalfWidth = (dims.width * LEGO_UNIT) / 2;
+        const brickHalfDepth = (dims.depth * LEGO_UNIT) / 2;
+        
+        // Check if brick is within baseplate bounds
+        const baseplateHalfSize = (BASEPLATE_SIZE * LEGO_UNIT) / 2;
+        const minX = snappedX - brickHalfWidth;
+        const maxX = snappedX + brickHalfWidth;
+        const minZ = snappedZ - brickHalfDepth;
+        const maxZ = snappedZ + brickHalfDepth;
+        
+        if (
+          minX >= -baseplateHalfSize &&
+          maxX <= baseplateHalfSize &&
+          minZ >= -baseplateHalfSize &&
+          maxZ <= baseplateHalfSize
+        ) {
+          const snappedY = BASEPLATE_HEIGHT / 2 + BRICK_HEIGHT / 2;
+          setMousePosition([snappedX, snappedY, snappedZ]);
+          setIsVisible(true);
+        } else {
+          setIsVisible(false);
+        }
       } else {
         setIsVisible(false);
       }
     };
-
-    const handleMouseLeave = () => {
-      setIsVisible(false);
-    };
-
-    const canvas = gl.domElement;
-    canvas.addEventListener("mousemove", handleMouseMove);
-    canvas.addEventListener("mouseleave", handleMouseLeave);
-
-    return () => {
-      canvas.removeEventListener("mousemove", handleMouseMove);
-      canvas.removeEventListener("mouseleave", handleMouseLeave);
-    };
-  }, [camera, gl, buildMode, brickGeometry]);
 
   if (!isVisible || !brickGeometry || buildMode !== "place") {
     return null;

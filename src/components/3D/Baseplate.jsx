@@ -5,6 +5,7 @@ import {
   STUD_HEIGHT,
   STUD_RADIUS,
   createPhysicsBrick,
+  snapToGrid,
 } from "./LegoBrick";
 import useBrickStore from "store/useBrickStore";
 
@@ -77,27 +78,15 @@ const Baseplate = ({
     if (buildMode !== "place") return;
 
     const point = event.point;
+    const snapResult = snapToGrid(point, selectedBrickType, size, height);
 
-    // Snap to the nearest stud position
-    const gridSize = LEGO_UNIT;
-    const snappedX = Math.round(point.x / gridSize) * gridSize;
-    const snappedZ = Math.round(point.z / gridSize) * gridSize;
-
-    // Check if the snapped position is within baseplate bounds
-    const halfSize = (size * LEGO_UNIT) / 2;
-    if (
-      Math.abs(snappedX) > halfSize - LEGO_UNIT / 2 ||
-      Math.abs(snappedZ) > halfSize - LEGO_UNIT / 2
-    ) {
-      return; // Outside baseplate bounds
+    if (!snapResult.isValid) {
+      return; // Brick would extend outside baseplate bounds
     }
-
-    // Place brick on top of baseplate
-    const snappedY = height / 2 + 0.48; // Half brick height above baseplate
 
     const newBrick = createPhysicsBrick({
       type: selectedBrickType,
-      position: [snappedX, snappedY, snappedZ],
+      position: snapResult.position,
       rotation: [0, 0, 0],
       color: selectedColor,
     });

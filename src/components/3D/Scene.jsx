@@ -9,6 +9,7 @@ import {
   BRICK_HEIGHT,
   STUD_HEIGHT,
   STUD_RADIUS,
+  snapToGrid,
 } from "./LegoBrick";
 import Baseplate from "./Baseplate";
 import SceneLights from "./SceneLights";
@@ -21,7 +22,7 @@ const BASEPLATE_SIZE = 64;
 const BASEPLATE_HEIGHT = 0.32;
 const BASEPLATE_COLOR = "#00aa00";
 
-// Updated PreviewBrick component for baseplate compatibility
+// Clean preview brick component using shared grid logic
 const CursorPreviewBrick = () => {
   const { selectedBrickType, selectedColor, buildMode } = useBrickStore();
   const meshRef = useRef();
@@ -84,7 +85,7 @@ const CursorPreviewBrick = () => {
     });
   }, [selectedColor]);
 
-  // Handle mouse move events
+  // Handle mouse move events using shared grid logic
   React.useEffect(() => {
     const handleMouseMove = (event) => {
       if (buildMode !== "place" || !brickGeometry) {
@@ -95,11 +96,9 @@ const CursorPreviewBrick = () => {
       const canvas = gl.domElement;
       const rect = canvas.getBoundingClientRect();
 
-      // Calculate mouse position in normalized device coordinates
       mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-      // Update raycaster
       raycaster.current.setFromCamera(mouse.current, camera);
 
       // Create a baseplate surface plane for intersection
@@ -110,21 +109,16 @@ const CursorPreviewBrick = () => {
       );
       const target = new THREE.Vector3();
 
-      // Get intersection with baseplate surface
       if (raycaster.current.ray.intersectPlane(baseplatePlane, target)) {
-        // Snap to baseplate grid
-        const gridSize = LEGO_UNIT;
-        const snappedX = Math.round(target.x / gridSize) * gridSize;
-        const snappedZ = Math.round(target.z / gridSize) * gridSize;
+        const snapResult = snapToGrid(
+          target,
+          selectedBrickType,
+          BASEPLATE_SIZE,
+          BASEPLATE_HEIGHT
+        );
 
-        // Check if position is within baseplate bounds
-        const halfSize = (BASEPLATE_SIZE * LEGO_UNIT) / 2;
-        if (
-          Math.abs(snappedX) <= halfSize - LEGO_UNIT / 2 &&
-          Math.abs(snappedZ) <= halfSize - LEGO_UNIT / 2
-        ) {
-          const snappedY = BASEPLATE_HEIGHT / 2 + BRICK_HEIGHT / 2;
-          setMousePosition([snappedX, snappedY, snappedZ]);
+        if (snapResult.isValid) {
+          setMousePosition(snapResult.position);
           setIsVisible(true);
         } else {
           setIsVisible(false);
@@ -146,7 +140,7 @@ const CursorPreviewBrick = () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [camera, gl, buildMode, brickGeometry]);
+  }, [camera, gl, buildMode, brickGeometry, selectedBrickType]);
 
   if (!isVisible || !brickGeometry || buildMode !== "place") {
     return null;
@@ -154,10 +148,7 @@ const CursorPreviewBrick = () => {
 
   return (
     <group position={mousePosition}>
-      {/* Main brick body */}
       <mesh ref={meshRef} geometry={brickGeometry} material={material} />
-
-      {/* Studs */}
       {studPositions.map((pos, index) => (
         <mesh
           key={index}
