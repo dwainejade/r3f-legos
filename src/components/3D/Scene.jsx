@@ -1,97 +1,112 @@
-import * as THREE from "three";
+import { useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stats } from "@react-three/drei";
-import { useState } from "react";
+import {
+  InstancedLegoBricks,
+  BrickPlacer,
+  createPhysicsBrick,
+} from "./LegoBrick";
+import SceneLights from "./SceneLights";
+import SceneUI from "ui/SceneUI";
+import useBrickStore from "store/useBrickStore";
 
-const STUD_HEIGHT = 0.1;
-const STUD_RADIUS = 0.24;
-const UNIT = 1;
-
-// --- Lego Brick Primitive ---
-function LegoBrick({
-  width = 2,
-  depth = 4,
-  height = 1,
-  color = "red",
-  position = [0, 0, 0],
-}) {
-  const studs = [];
-  for (let x = 0; x < width; x++) {
-    for (let z = 0; z < depth; z++) {
-      studs.push(
-        <mesh
-          key={`stud-${x}-${z}`}
-          position={[
-            position[0] + (x - (width - 1) / 2) * UNIT,
-            position[1] + height / 2 + STUD_HEIGHT / 2,
-            position[2] + (z - (depth - 1) / 2) * UNIT,
-          ]}
-        >
-          <cylinderGeometry
-            args={[STUD_RADIUS, STUD_RADIUS, STUD_HEIGHT, 32]}
-          />
-          <meshStandardMaterial color={color} />
-        </mesh>
-      );
-    }
-  }
-
+// Grid helper component
+const GridHelper = ({ size = 20, divisions = 20, colorGrid = "#404040" }) => {
   return (
-    <group>
-      <mesh position={position}>
-        <boxGeometry args={[width * UNIT, height, depth * UNIT]} />
-        <meshStandardMaterial color={color} />
-      </mesh>
-      {studs}
-    </group>
+    <gridHelper
+      args={[size, divisions, colorGrid, colorGrid]}
+      position={[0, -0.49, 0]}
+    />
   );
-}
+};
 
-// --- Main Scene ---
-export default function App() {
-  const [bricks, setBricks] = useState([
-    { width: 2, depth: 4, height: 1, color: "red", position: [0, 0.5, 0] },
-  ]);
+// Main Scene Component
+const Scene = () => {
+  const { bricks } = useBrickStore();
 
-  const addBrickOnTop = () => {
-    const lastBrick = bricks[bricks.length - 1];
-    const randomWidth = Math.floor(Math.random() * 4) + 1; // 1–4 studs
-    const randomDepth = Math.floor(Math.random() * 4) + 1; // 1–4 studs
-    const randomColor = new THREE.Color(
-      Math.random(),
-      Math.random(),
-      Math.random()
-    ).getStyle();
+  // Initialize demo bricks if none exist
+  useEffect(() => {
+    if (bricks.length === 0) {
+      const demoBricks = [
+        {
+          type: "2x4",
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          color: "#ff0000",
+        },
+        {
+          type: "2x2",
+          position: [2, 0, 0],
+          rotation: [0, 0, 0],
+          color: "#0055bf",
+        },
+        {
+          type: "1x2",
+          position: [0, 1, 0],
+          rotation: [0, 0, 0],
+          color: "#ffd700",
+        },
+        {
+          type: "1x1",
+          position: [-1, 0, 0],
+          rotation: [0, 0, 0],
+          color: "#00af4d",
+        },
+        {
+          type: "2x6",
+          position: [0, 0, -3],
+          rotation: [0, 0, 0],
+          color: "#ff8c00",
+        },
+      ].map(createPhysicsBrick);
 
-    const newBrick = {
-      width: randomWidth,
-      depth: randomDepth,
-      height: 1,
-      color: randomColor,
-      position: [
-        lastBrick.position[0],
-        lastBrick.position[1] + lastBrick.height, // stack above
-        lastBrick.position[2],
-      ],
-    };
-
-    setBricks([...bricks, newBrick]);
-  };
+      demoBricks.forEach((brick) => useBrickStore.getState().addBrick(brick));
+    }
+  }, [bricks.length]);
 
   return (
-    <div className="scene">
-      <Canvas camera={{ position: [5, 5, 5], fov: 50 }} onClick={addBrickOnTop}>
-        <Stats />
-        <gridHelper args={[20, 20]} />
-        <OrbitControls />
+    <div
+      className="scene"
+      style={{ width: "100vw", height: "100vh", background: "#1a1a1a" }}
+    >
+      <Canvas
+        camera={{ position: [8, 6, 8], fov: 60 }}
+        shadows
+        gl={{ antialias: true, alpha: false }}
+      >
+        {/* Lighting System */}
+        <SceneLights />
 
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 10, 5]} />
+        {/* Building Surface */}
+        <BrickPlacer />
 
-        {bricks.map((b, i) => (
-          <LegoBrick key={i} {...b} />
-        ))}
+        {/* Grid Helper */}
+        <GridHelper />
+
+        {/* LEGO Bricks */}
+        <InstancedLegoBricks />
+
+        {/* Camera Controls */}
+        <OrbitControls
+          enablePan={true}
+          enableZoom={true}
+          enableRotate={true}
+          minDistance={3}
+          maxDistance={20}
+          target={[0, 0, 0]}
+          dampingFactor={0.05}
+          enableDamping={true}
+        />
+        {/* Performance Stats */}
+        <Stats showPanel={0} className="stats" />
       </Canvas>
+
+      {/* UI Overlay */}
+      <div className="scene__overlay">
+        <SceneUI />
+      </div>
     </div>
   );
-}
+};
+
+export default Scene;
