@@ -1,115 +1,179 @@
-import React, { useRef, useState, useEffect } from "react";
-import { useThree } from "@react-three/fiber";
+import React, { useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import useBrickStore, {
+import useBrickStore from "store/useBrickStore";
+import  {
   BRICK_HEIGHT,
   BRICK_TYPES,
   LEGO_UNIT,
 } from "store/useBrickStore";
 
+// Cursor preview brick component
 const CursorPreviewBrick = () => {
   const selectedBrickType = useBrickStore((state) => state.selectedBrickType);
   const selectedColor = useBrickStore((state) => state.selectedColor);
   const buildMode = useBrickStore((state) => state.buildMode);
-  const baseplateSize = useBrickStore((state) => state.baseplateSize);
 
+  const meshRef = useRef();
+  const studMeshRef = useRef();
+  const [mousePosition, setMousePosition] = useState([0, 0, 0]);
+  const [isVisible, setIsVisible] = useState(false);
   const { camera, gl } = useThree();
+
   const raycaster = useRef(new THREE.Raycaster());
   const mouse = useRef(new THREE.Vector2());
 
-  const [position, setPosition] = useState([0, 0, 0]);
-  const [isValid, setIsValid] = useState(false);
-
-  // Geometry for the brick preview
+  // Create geometry for the selected brick type
   const brickGeometry = React.useMemo(() => {
     if (!selectedBrickType) return null;
+
     const dims = BRICK_TYPES[selectedBrickType];
-    return new THREE.BoxGeometry(
-      dims.width * LEGO_UNIT,
-      dims.height * BRICK_HEIGHT,
-      dims.depth * LEGO_UNIT
-    );
+    const width = dims.width * LEGO_UNIT;
+    const depth = dims.depth * LEGO_UNIT;
+    const height = dims.height * BRICK_HEIGHT;
+
+    return new THREE.BoxGeometry(width, height, depth);
   }, [selectedBrickType]);
 
-  // Material changes color based on validity
+  // Create stud geometry and positions
+  const { studGeometry, studPositions } = React.useMemo(() => {
+    if (!selectedBrickType) return { studGeometry: null, studPositions: [] };
+
+    const dims = BRICK_TYPES[selectedBrickType];
+    const studGeo = new THREE.CylinderGeometry(
+      STUD_RADIUS,
+      STUD_RADIUS,
+      STUD_HEIGHT,
+      12
+    );
+
+    const positions = [];
+    const studSpacing = LEGO_UNIT;
+    const startX = (-(dims.width - 1) * studSpacing) / 2;
+    const startZ = (-(dims.depth - 1) * studSpacing) / 2;
+
+    for (let x = 0; x < dims.width; x++) {
+      for (let z = 0; z < dims.depth; z++) {
+        positions.push([
+          startX + x * studSpacing,
+          (dims.height * BRICK_HEIGHT) / 2 + STUD_HEIGHT / 2,
+          startZ + z * studSpacing,
+        ]);
+      }
+    }
+
+    return { studGeometry: studGeo, studPositions: positions };
+  }, [selectedBrickType]);
+
+  // Create material
   const material = React.useMemo(() => {
     return new THREE.MeshLambertMaterial({
-      color: isValid
-        ? new THREE.Color(selectedColor)
-        : new THREE.Color(0xff0000),
+      color: new THREE.Color(selectedColor),
       transparent: true,
       opacity: 0.7,
     });
-  }, [selectedColor, isValid]);
+  }, [selectedColor]);
 
-  // Update preview position on mouse move
-  useEffect(() => {
+  // Update mouse position and raycast to find surface
+  useFrame(() => {
+    if (buildMode !== "place" || !brickGeometry) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Get mouse position from DOM
     const canvas = gl.domElement;
+    const rect = canvas.getBoundingClientRect();
 
-    const onMouseMove = (event) => {
+    // We'll use a more direct approach - listen to mouse events
+    // This is a simplified version that updates on frame
+    setIsVisible(true);
+  });
+
+// Handle mouse move events
+  React.useEffect(() => {
+    const handleMouseMove = (event) => {
       if (buildMode !== "place" || !brickGeometry) {
-        setIsValid(false);
+        setIsVisible(false);
         return;
       }
 
+      const canvas = gl.domElement;
       const rect = canvas.getBoundingClientRect();
+
+      // Calculate mouse position in normalized device coordinates
       mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
+      // Update raycaster
       raycaster.current.setFromCamera(mouse.current, camera);
 
-      // Plane for the baseplate surface (assume y=0)
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-      const intersectPoint = new THREE.Vector3();
+      // Create a baseplate surface plane for intersection
+      const baseplateY = BASEPLATE_HEIGHT / 2;
+      const baseplatePlane = new THREE.Plane(
+        new THREE.Vector3(0, 1, 0),
+        -baseplateY
+      );
+      const target = new THREE.Vector3();
 
-      if (raycaster.current.ray.intersectPlane(plane, intersectPoint)) {
-        // Snap to studs
+      // Get intersection with baseplate surface
+      if (raycaster.current.ray.intersectPlane(baseplatePlane, target)) {
+        // Snap to stud grid - ALL bricks snap to stud positions
         const gridSize = LEGO_UNIT;
+        const snappedX = Math.round(target.x / gridSize) * gridSize;
+        const snappedZ = Math.round(target.z / gridSize) * gridSize;
+
+        // Calculate brick bounds for boundary checking
         const dims = BRICK_TYPES[selectedBrickType];
-        const halfWidth = (dims.width * LEGO_UNIT) / 2;
-        const halfDepth = (dims.depth * LEGO_UNIT) / 2;
-
-        const snappedX = Math.round(intersectPoint.x / gridSize) * gridSize;
-        const snappedZ = Math.round(intersectPoint.z / gridSize) * gridSize;
-        const snappedY = (dims.height * BRICK_HEIGHT) / 2; // on top of baseplate (assumed y=0)
-
-        // Check if within baseplate bounds
-        const baseHalfSize = (baseplateSize * LEGO_UNIT) / 2;
-        const minX = snappedX - halfWidth;
-        const maxX = snappedX + halfWidth;
-        const minZ = snappedZ - halfDepth;
-        const maxZ = snappedZ + halfDepth;
-
-        const valid =
-          minX >= -baseHalfSize &&
-          maxX <= baseHalfSize &&
-          minZ >= -baseHalfSize &&
-          maxZ <= baseHalfSize;
-
-        setPosition([snappedX, snappedY, snappedZ]);
-        setIsValid(valid);
+        const brickHalfWidth = (dims.width * LEGO_UNIT) / 2;
+        const brickHalfDepth = (dims.depth * LEGO_UNIT) / 2;
+        
+        // Check if brick is within baseplate bounds
+        const baseplateHalfSize = (BASEPLATE_SIZE * LEGO_UNIT) / 2;
+        const minX = snappedX - brickHalfWidth;
+        const maxX = snappedX + brickHalfWidth;
+        const minZ = snappedZ - brickHalfDepth;
+        const maxZ = snappedZ + brickHalfDepth;
+        
+        if (
+          minX >= -baseplateHalfSize &&
+          maxX <= baseplateHalfSize &&
+          minZ >= -baseplateHalfSize &&
+          maxZ <= baseplateHalfSize
+        ) {
+          const snappedY = BASEPLATE_HEIGHT / 2 + BRICK_HEIGHT / 2;
+          setMousePosition([snappedX, snappedY, snappedZ]);
+          setIsVisible(true);
+        } else {
+          setIsVisible(false);
+        }
       } else {
-        setIsValid(false);
+        setIsVisible(false);
       }
     };
 
-    canvas.addEventListener("mousemove", onMouseMove);
-    return () => {
-      canvas.removeEventListener("mousemove", onMouseMove);
-    };
-  }, [camera, gl, buildMode, brickGeometry, selectedBrickType, baseplateSize]);
-
-  if (buildMode !== "place" || !brickGeometry) return null;
+  if (!isVisible || !brickGeometry || buildMode !== "place") {
+    return null;
+  }
 
   return (
-    <mesh
-      geometry={brickGeometry}
-      material={material}
-      position={position}
-      castShadow
-      receiveShadow
-    />
+    <group position={mousePosition}>
+      {/* Main brick body */}
+      <mesh ref={meshRef} geometry={brickGeometry} material={material} />
+
+      {/* Studs */}
+      {studPositions.map((pos, index) => (
+        <mesh
+          key={index}
+          ref={index === 0 ? studMeshRef : undefined}
+          position={pos}
+          geometry={studGeometry}
+          material={material}
+        />
+      ))}
+    </group>
   );
-};
+  }
+
 
 export default CursorPreviewBrick;
