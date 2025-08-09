@@ -1,24 +1,15 @@
 import React, { useRef, useMemo, useEffect } from "react";
 import * as THREE from "three";
-import useBrickStore from "store/useBrickStore";
+import useBrickStore, {
+  LEGO_UNIT,
+  STUD_HEIGHT,
+  STUD_RADIUS,
+  BRICK_HEIGHT,
+  BRICK_TYPES,
+} from "store/useBrickStore";
 
 // LEGO brick dimensions (in LEGO units where 1 unit = 8mm)
-export const LEGO_UNIT = 0.8; // Scale factor for Three.js (8mm = 0.8 units)
-export const STUD_HEIGHT = 0.17;
-export const STUD_RADIUS = 0.24;
-export const BRICK_HEIGHT = 0.96; // Standard brick height
 export const WALL_THICKNESS = 0.15;
-
-// Define brick type configurations
-export const BRICK_TYPES = {
-  "1x1": { width: 1, depth: 1, height: 1 },
-  "1x2": { width: 1, depth: 2, height: 1 },
-  "1x4": { width: 1, depth: 4, height: 1 },
-  "2x2": { width: 2, depth: 2, height: 1 },
-  "2x4": { width: 2, depth: 4, height: 1 },
-  "2x6": { width: 2, depth: 6, height: 1 },
-  "2x8": { width: 2, depth: 8, height: 1 },
-};
 
 // Physics-ready brick data structure for future integration
 export const createPhysicsBrick = (brick) => {
@@ -209,7 +200,8 @@ const InstancedBrickGroup = React.forwardRef(
 
 // Instanced LEGO Brick System - groups bricks by type ONLY (not by color)
 export const InstancedLegoBricks = () => {
-  const { bricks, selectedBrickId } = useBrickStore();
+  const bricks = useBrickStore((state) => state.bricks);
+  const selectedBrickId = useBrickStore((state) => state.selectedBrickId);
   const instancedMeshRefs = useRef(new Map());
 
   // Group bricks by type ONLY (not by color) to allow individual brick colors

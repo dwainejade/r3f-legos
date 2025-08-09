@@ -2,24 +2,87 @@ import React, { useRef, useState, useEffect } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Stats, Sky } from "@react-three/drei";
 import * as THREE from "three";
-import {
-  InstancedLegoBricks,
+import { InstancedLegoBricks } from "./LegoBrick";
+import Baseplate from "./Baseplate";
+import SceneLights from "./SceneLights";
+import SceneUI from "ui/SceneUI";
+import useBrickStore, {
   BRICK_TYPES,
   LEGO_UNIT,
   BRICK_HEIGHT,
   STUD_HEIGHT,
   STUD_RADIUS,
-} from "./LegoBrick";
-import Baseplate from "./Baseplate";
-import SceneLights from "./SceneLights";
-import SceneUI from "ui/SceneUI";
-import useBrickStore from "store/useBrickStore";
+  BASEPLATE_COLOR,
+  BASEPLATE_HEIGHT,
+  BASEPLATE_SIZE,
+} from "store/useBrickStore";
 import { getBrickDefaultColor } from "ui/SceneUI";
 
-// Constants for baseplate (shared with Baseplate component)
-const BASEPLATE_SIZE = 64;
-const BASEPLATE_HEIGHT = 0.32;
-const BASEPLATE_COLOR = "#00aa00";
+// This component must be inside the Canvas tree
+function PlaceBrickController({ baseplateRef }) {
+  usePlaceBrickOnClick(baseplateRef);
+  return null; // no UI
+}
+
+function usePlaceBrickOnClick(baseplateRef) {
+  const { camera, gl } = useThree();
+  const raycaster = useRef(new THREE.Raycaster());
+  const mouse = useRef(new THREE.Vector2());
+  const { selectedBrickType, selectedColor, buildMode, addBrick, snapPoint } =
+    useBrickStore();
+
+  useEffect(() => {
+    if (!gl || !baseplateRef.current) return;
+
+    const canvas = gl.domElement;
+
+    const onClick = (event) => {
+      if (buildMode !== "place") return;
+
+      const rect = canvas.getBoundingClientRect();
+
+      mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.current.setFromCamera(mouse.current, camera);
+
+      // Intersect baseplate mesh only
+      const intersects = raycaster.current.intersectObject(
+        baseplateRef.current
+      );
+      if (intersects.length === 0) return;
+
+      const intersectPoint = intersects[0].point;
+
+      // Use snapPoint from store (which includes collision and stacking)
+      const snapResult = snapPoint(intersectPoint);
+
+      if (snapResult.isValid) {
+        addBrick({
+          type: selectedBrickType,
+          color: selectedColor,
+          position: snapResult.position,
+          rotation: [0, 0, 0], // You can add rotation UI later
+        });
+      } else {
+        // Optional: feedback to user about invalid placement
+        console.warn("Invalid placement position");
+      }
+    };
+
+    canvas.addEventListener("pointerdown", onClick);
+    return () => canvas.removeEventListener("pointerdown", onClick);
+  }, [
+    gl,
+    camera,
+    baseplateRef,
+    selectedBrickType,
+    selectedColor,
+    buildMode,
+    addBrick,
+    snapPoint,
+  ]);
+}
 
 // Enhanced cursor preview brick component using store collision detection
 const CursorPreviewBrick = () => {
@@ -203,7 +266,13 @@ const CursorPreviewBrick = () => {
 
 // Main Scene Component
 const Scene = () => {
-  const { setBrickType, setColor } = useBrickStore();
+  const setBrickType = useBrickStore((state) => state.setBrickType);
+  const setColor = useBrickStore((state) => state.setColor);
+  const buildMode = useBrickStore((state) => state.buildMode);
+  console.warn("Current build mode:", buildMode);
+  const baseplateRef = useRef();
+
+  // usePlaceBrickOnClick(baseplateRef);
 
   // Initialize default brick type and color on startup
   useEffect(() => {
@@ -215,14 +284,18 @@ const Scene = () => {
   return (
     <div
       className="scene"
-      style={{ width: "100vw", height: "100vh", background: "#1a1a1a" }}
+      style={{
+        width: "100vw",
+        height: "100vh",
+        cursor: buildMode === "place" ? "none" : "auto",
+      }}
     >
       <Canvas
         camera={{ position: [12, 8, 12], fov: 50 }}
         shadows
-        gl={{ antialias: true, alpha: false }}
+        gl={{ antialias: true }}
       >
-        {/* Lighting System */}
+        {/* Lighting */}
         <SceneLights />
         <Sky
           distance={2000}
@@ -231,35 +304,34 @@ const Scene = () => {
           azimuth={0.25}
         />
 
-        {/* LEGO Baseplate */}
+        {/* Baseplate with ref */}
         <Baseplate
+          ref={baseplateRef}
           size={BASEPLATE_SIZE}
           height={BASEPLATE_HEIGHT}
           color={BASEPLATE_COLOR}
         />
 
-        {/* LEGO Bricks */}
+        {/* Bricks */}
         <InstancedLegoBricks />
 
-        {/* Enhanced Cursor Preview Brick with collision detection */}
+        {/* Cursor Preview */}
         <CursorPreviewBrick />
 
-        {/* Camera Controls */}
+        {/* Controls and Stats */}
         <OrbitControls
-          enablePan={true}
-          enableZoom={true}
-          enableRotate={true}
+          enablePan
+          enableZoom
+          enableRotate
           minDistance={5}
           maxDistance={300}
           target={[0, 0, 0]}
           dampingFactor={0.05}
-          enableDamping={true}
+          enableDamping
         />
-
-        {/* Performance Stats */}
-        <Stats showPanel={0} className="stats" />
+        <Stats showPanel={0} />
+        <PlaceBrickController baseplateRef={baseplateRef} />
       </Canvas>
-
       {/* UI Overlay */}
       <div className="scene__overlay">
         <SceneUI />

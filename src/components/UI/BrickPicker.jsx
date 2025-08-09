@@ -1,6 +1,5 @@
 import React from "react";
-import useBrickStore from "store/useBrickStore";
-import { BRICK_TYPES } from "3d/LegoBrick";
+import useBrickStore, { BRICK_TYPES } from "store/useBrickStore";
 
 // Define consistent colors for brick sizes
 const BRICK_SIZE_COLORS = {
