@@ -1,0 +1,325 @@
+@import './variables';
+@import './mixins';
+
+.scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(135deg, $color-bg-primary 0%, lighten($color-bg-primary, 5%) 100%);
+  
+  // Canvas container
+  canvas {
+    display: block;
+    outline: none;
+    cursor: crosshair;
+    height: 100vh;
+    
+    &:focus {
+      outline: none;
+    }
+  }
+  
+  // ===================================
+  // Scene Overlay UI
+  // ===================================
+  
+  &__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: $z-index-fixed;
+    
+    // Allow specific elements to receive pointer events
+    * {
+      pointer-events: none;
+    }
+    
+    button, .clickable {
+      pointer-events: all;
+    }
+  }
+  
+  // ===================================
+  // Scene Info Panel (Top Left)
+  // ===================================
+  
+  &__info {
+    position: absolute;
+    top: $spacing-md;
+    left: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: rgba($color-bg-secondary, 0.9);
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    backdrop-filter: blur(10px);
+    pointer-events: all;
+    
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    
+    span {
+      font-size: $font-size-sm;
+      color: $color-text-secondary;
+      font-family: $font-secondary;
+      
+      &:first-child {
+        color: $color-text-primary;
+        font-weight: $font-weight-medium;
+      }
+    }
+  }
+  
+  // ===================================
+  // Scene Controls (Top Right)
+  // ===================================
+  
+  &__controls {
+    position: absolute;
+    top: $spacing-md;
+    right: $spacing-md;
+    display: flex;
+    gap: $spacing-sm;
+  }
+  
+  &__control-btn {
+    @include button-base;
+    
+    width: 40px;
+    height: 40px;
+    background: rgba($color-bg-secondary, 0.9);
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    backdrop-filter: blur(10px);
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    font-size: $font-size-lg;
+    color: $color-text-secondary;
+    transition: $transition-colors;
+    
+    &:hover {
+      background: rgba($color-bg-tertiary, 0.9);
+      border-color: $color-border-light;
+      color: $color-text-primary;
+      transform: translateY(-1px);
+    }
+    
+    &:active {
+      transform: translateY(0);
+      background: rgba($color-bg-primary, 0.9);
+    }
+    
+    // Icon-specific styles
+    &[title*="Camera"] {
+      &:hover {
+        color: $color-accent;
+      }
+    }
+    
+    &[title*="Grid"] {
+      &:hover {
+        color: $color-success;
+      }
+    }
+    
+    &[title*="Screenshot"] {
+      &:hover {
+        color: $color-warning;
+      }
+    }
+  }
+  
+  // ===================================
+  // Build Mode Indicators
+  // ===================================
+  
+  &--build-mode {
+    canvas {
+      cursor: copy;
+    }
+  }
+  
+  &--remove-mode {
+    canvas {
+      cursor: not-allowed;
+    }
+  }
+  
+  &--select-mode {
+    canvas {
+      cursor: pointer;
+    }
+  }
+  
+  // ===================================
+  // Loading State
+  // ===================================
+  
+  &__loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    
+    color: $color-text-secondary;
+    font-size: $font-size-lg;
+    
+    &::before {
+      content: '';
+      width: 40px;
+      height: 40px;
+      border: 3px solid $color-border;
+      border-top-color: $color-accent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+  }
+  
+  // ===================================
+  // Responsive Design
+  // ===================================
+  
+  @media (max-width: $breakpoint-md) {
+    &__info {
+      top: $spacing-sm;
+      left: $spacing-sm;
+      padding: $spacing-xs $spacing-sm;
+      
+      span {
+        font-size: $font-size-xs;
+      }
+    }
+    
+    &__controls {
+      top: $spacing-sm;
+      right: $spacing-sm;
+      gap: $spacing-xs;
+    }
+    
+    &__control-btn {
+      width: 36px;
+      height: 36px;
+      font-size: $font-size-md;
+    }
+  }
+  
+  @media (max-width: $breakpoint-sm) {
+    &__info {
+      span:not(:first-child) {
+        display: none; // Hide secondary info on small screens
+      }
+    }
+  }
+}
+
+// ===================================
+// Animations
+// ===================================
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Apply fade-in animation to overlay elements
+.scene__info,
+.scene__controls {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+// ===================================
+// Canvas Performance Hints
+// ===================================
+
+.scene canvas {
+  // Optimize rendering
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  
+  // Prevent text selection
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  
+  // Prevent context menu
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// ===================================
+// Accessibility
+// ===================================
+
+.scene {
+  // Focus management for keyboard navigation
+  &:focus-within {
+    outline: 2px solid $color-accent;
+    outline-offset: -2px;
+  }
+  
+  // Screen reader support
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+// ===================================
+// Theme Variations
+// ===================================
+
+.scene {
+  // Light theme override (if needed)
+  &--light {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    
+    .scene__info,
+    .scene__control-btn {
+      background: rgba(255, 255, 255, 0.9);
+      border-color: rgba(0, 0, 0, 0.1);
+      color: #495057;
+    }
+  }
+  
+  // High contrast mode
+  &--high-contrast {
+    .scene__info,
+    .scene__control-btn {
+      background: $color-bg-primary;
+      border: 2px solid $color-text-primary;
+      color: $color-text-primary;
+    }
+  }
+}
