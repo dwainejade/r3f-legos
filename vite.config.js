@@ -8,11 +8,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": "/src",
+      "3d": "/src/components/3D",
       components: "/src/components",
       styles: "/src/styles",
       store: "/src/store",
       ui: "/src/components/UI",
-      "3d": "/src/components/3D",
+      utils: "/src/utils",
     },
   },
 });
