@@ -89,7 +89,7 @@ const InstancedBrickGroup = React.forwardRef(
     useEffect(() => {
       if (!meshRef.current) return;
 
-      // Initialize base colors and matrices so there’s no black frame
+      // Initialize base colors and matrices so there's no black frame
       const mesh = meshRef.current;
       const matrix = new THREE.Matrix4();
       const position = new THREE.Vector3();
@@ -308,43 +308,5 @@ export const InstancedLegoBricks = () => {
         />
       ))}
     </group>
-  );
-};
-
-// Brick placement helper component
-export const BrickPlacer = () => {
-  const { selectedBrickType, selectedColor, buildMode, addBrick } =
-    useBrickStore();
-
-  const handlePlaneClick = (event) => {
-    if (buildMode !== "place") return;
-
-    const point = event.point;
-    // Snap to grid
-    const gridSize = LEGO_UNIT;
-    const snappedX = Math.round(point.x / gridSize) * gridSize;
-    const snappedZ = Math.round(point.z / gridSize) * gridSize;
-    const snappedY = point.y + BRICK_HEIGHT / 2; // Place on surface
-
-    const newBrick = createPhysicsBrick({
-      type: selectedBrickType,
-      position: [snappedX, snappedY, snappedZ],
-      rotation: [0, 0, 0],
-      color: selectedColor,
-    });
-
-    addBrick(newBrick);
-  };
-
-  return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, -0.5, 0]}
-      onClick={handlePlaneClick}
-      receiveShadow
-    >
-      <planeGeometry args={[20, 20]} />
-      <meshLambertMaterial color="#2d2d2d" />
-    </mesh>
   );
 };
