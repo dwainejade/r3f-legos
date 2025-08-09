@@ -5,7 +5,6 @@ import {
   STUD_HEIGHT,
   STUD_RADIUS,
   createPhysicsBrick,
-  snapToGrid,
 } from "./LegoBrick";
 import useBrickStore from "store/useBrickStore";
 
@@ -15,10 +14,22 @@ const Baseplate = ({
   height = 0.32, // default thinner than regular bricks
   color = "#00aa00", // default classic green
 }) => {
-  const { selectedBrickType, selectedColor, buildMode, addBrick } =
-    useBrickStore();
+  const {
+    selectedBrickType,
+    selectedColor,
+    buildMode,
+    addBrick,
+    snapPoint,
+    setBaseplateSize,
+  } = useBrickStore();
+
   const baseplateRef = useRef();
   const studMeshRef = useRef();
+
+  // Update store baseplate size when this component's size changes
+  React.useEffect(() => {
+    setBaseplateSize(size);
+  }, [size, setBaseplateSize]);
 
   // Generate baseplate geometry
   const baseplateGeometry = useMemo(() => {
@@ -78,10 +89,13 @@ const Baseplate = ({
     if (buildMode !== "place") return;
 
     const point = event.point;
-    const snapResult = snapToGrid(point, selectedBrickType, size, height);
+
+    // Use the store's snapPoint function which includes collision detection
+    const snapResult = snapPoint(point);
 
     if (!snapResult.isValid) {
-      return; // Brick would extend outside baseplate bounds
+      console.warn("Cannot place brick at this position");
+      return; // Brick would extend outside baseplate bounds or collision detected
     }
 
     const newBrick = createPhysicsBrick({

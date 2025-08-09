@@ -9,7 +9,6 @@ import {
   BRICK_HEIGHT,
   STUD_HEIGHT,
   STUD_RADIUS,
-  snapToGrid,
 } from "./LegoBrick";
 import Baseplate from "./Baseplate";
 import SceneLights from "./SceneLights";
@@ -22,12 +21,14 @@ const BASEPLATE_SIZE = 64;
 const BASEPLATE_HEIGHT = 0.32;
 const BASEPLATE_COLOR = "#00aa00";
 
-// Clean preview brick component using shared grid logic
+// Enhanced cursor preview brick component using store collision detection
 const CursorPreviewBrick = () => {
-  const { selectedBrickType, selectedColor, buildMode } = useBrickStore();
+  const { selectedBrickType, selectedColor, buildMode, snapPoint } =
+    useBrickStore();
   const meshRef = useRef();
   const studMeshRef = useRef();
   const [mousePosition, setMousePosition] = useState([0, 0, 0]);
+  const [isValid, setIsValid] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const { camera, gl } = useThree();
 
@@ -76,16 +77,19 @@ const CursorPreviewBrick = () => {
     return { studGeometry: studGeo, studPositions: positions };
   }, [selectedBrickType]);
 
-  // Create material
+  // Create material with validity indication
   const material = React.useMemo(() => {
-    return new THREE.MeshLambertMaterial({
-      color: new THREE.Color(selectedColor),
-      transparent: true,
-      opacity: 0.7,
-    });
-  }, [selectedColor]);
+    const baseColor = new THREE.Color(selectedColor);
 
-  // Handle mouse move events using shared grid logic
+    // Change material based on validity
+    return new THREE.MeshLambertMaterial({
+      color: isValid ? baseColor : new THREE.Color(0xff0000), // Red if invalid
+      transparent: true,
+      opacity: isValid ? 0.7 : 0.5, // More transparent if invalid
+    });
+  }, [selectedColor, isValid]);
+
+  // Handle mouse move events using store's snapPoint function
   React.useEffect(() => {
     const handleMouseMove = (event) => {
       if (buildMode !== "place" || !brickGeometry) {
@@ -110,18 +114,24 @@ const CursorPreviewBrick = () => {
       const target = new THREE.Vector3();
 
       if (raycaster.current.ray.intersectPlane(baseplatePlane, target)) {
-        const snapResult = snapToGrid(
-          target,
-          selectedBrickType,
-          BASEPLATE_SIZE,
-          BASEPLATE_HEIGHT
-        );
+        // Use the store's snapPoint function which includes collision detection
+        const snapResult = snapPoint(target);
 
         if (snapResult.isValid) {
           setMousePosition(snapResult.position);
+          setIsValid(true);
           setIsVisible(true);
         } else {
-          setIsVisible(false);
+          // Still show preview but indicate it's invalid
+          // Try to show position even if invalid for user feedback
+          const invalidResult = snapPoint(target);
+          if (invalidResult.position) {
+            setMousePosition(invalidResult.position);
+            setIsValid(false);
+            setIsVisible(true);
+          } else {
+            setIsVisible(false);
+          }
         }
       } else {
         setIsVisible(false);
@@ -140,7 +150,7 @@ const CursorPreviewBrick = () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [camera, gl, buildMode, brickGeometry, selectedBrickType]);
+  }, [camera, gl, buildMode, brickGeometry, selectedBrickType, snapPoint]);
 
   if (!isVisible || !brickGeometry || buildMode !== "place") {
     return null;
@@ -148,7 +158,22 @@ const CursorPreviewBrick = () => {
 
   return (
     <group position={mousePosition}>
+      {/* Add a subtle glow effect for invalid positions */}
+      {!isValid && (
+        <mesh geometry={brickGeometry}>
+          <meshBasicMaterial
+            color={0xff0000}
+            transparent
+            opacity={0.2}
+            wireframe
+          />
+        </mesh>
+      )}
+
+      {/* Main brick body */}
       <mesh ref={meshRef} geometry={brickGeometry} material={material} />
+
+      {/* Studs */}
       {studPositions.map((pos, index) => (
         <mesh
           key={index}
@@ -158,6 +183,20 @@ const CursorPreviewBrick = () => {
           material={material}
         />
       ))}
+
+      {/* Layer indicator for stacking */}
+      {isValid &&
+        mousePosition[1] > BASEPLATE_HEIGHT / 2 + BRICK_HEIGHT / 2 && (
+          <mesh position={[0, -BRICK_HEIGHT / 2 - 0.1, 0]}>
+            <ringGeometry args={[LEGO_UNIT * 0.8, LEGO_UNIT * 1.2, 16]} />
+            <meshBasicMaterial
+              color={0x00ff00}
+              transparent
+              opacity={0.6}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        )}
     </group>
   );
 };
@@ -192,7 +231,7 @@ const Scene = () => {
           azimuth={0.25}
         />
 
-        {/* LEGO Baseplate (replaces BrickPlacer and GridHelper) */}
+        {/* LEGO Baseplate */}
         <Baseplate
           size={BASEPLATE_SIZE}
           height={BASEPLATE_HEIGHT}
@@ -202,7 +241,7 @@ const Scene = () => {
         {/* LEGO Bricks */}
         <InstancedLegoBricks />
 
-        {/* Cursor Preview Brick */}
+        {/* Enhanced Cursor Preview Brick with collision detection */}
         <CursorPreviewBrick />
 
         {/* Camera Controls */}

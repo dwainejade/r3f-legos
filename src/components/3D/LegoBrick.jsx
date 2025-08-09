@@ -9,85 +9,6 @@ export const STUD_RADIUS = 0.24;
 export const BRICK_HEIGHT = 0.96; // Standard brick height
 export const WALL_THICKNESS = 0.15;
 
-// worldPosition: THREE.Vector3 (or {x,y,z})
-// brickType: key from BRICK_TYPES
-// baseplateSize: number (in studs, same as your Baseplate `size`)
-// baseplateHeight: world units (optional)
-// rotationY: radians (optional, default 0)
-export const snapToGrid = (
-  worldPosition,
-  brickType,
-  baseplateSize,
-  baseplateHeight = 0.32,
-  rotationY = 0
-) => {
-  const dims = BRICK_TYPES[brickType];
-  if (!dims) return { position: [0, 0, 0], isValid: false };
-
-  const gridSize = LEGO_UNIT;
-
-  // --- compute the stud-origin used by your Baseplate ---
-  // Baseplate uses: start = (-(size - 1) * studSpacing) / 2
-  // In stud units, that's:
-  const studOrigin = -((baseplateSize - 1) / 2); // in studs
-
-  // Convert world coords to stud units relative to the stud origin
-  const xStudWorld = worldPosition.x / gridSize;
-  const zStudWorld = worldPosition.z / gridSize;
-  const xStudLocal = xStudWorld - studOrigin;
-  const zStudLocal = zStudWorld - studOrigin;
-
-  // Normalize rotation to nearest quarter-turn (0, 90, 180, 270)
-  const quarterTurns =
-    ((Math.round((rotationY % (2 * Math.PI)) / (Math.PI / 2)) % 4) + 4) % 4;
-
-  // Swap width/depth parity if rotated by odd number of quarter turns
-  let width = dims.width;
-  let depth = dims.depth;
-  if (quarterTurns % 2 === 1) {
-    [width, depth] = [depth, width];
-  }
-
-  // Parity offset in stud-units: even -> 0.5, odd -> 0
-  const xParityOffset = width % 2 === 0 ? 0.5 : 0;
-  const zParityOffset = depth % 2 === 0 ? 0.5 : 0;
-
-  // Snap in local stud space (relative to studOrigin), then convert back
-  const snappedXStudLocal =
-    Math.round(xStudLocal - xParityOffset) + xParityOffset;
-  const snappedZStudLocal =
-    Math.round(zStudLocal - zParityOffset) + zParityOffset;
-
-  const snappedXStudWorld = snappedXStudLocal + studOrigin;
-  const snappedZStudWorld = snappedZStudLocal + studOrigin;
-
-  const snappedX = snappedXStudWorld * gridSize;
-  const snappedZ = snappedZStudWorld * gridSize;
-
-  // Y position: sit on top of baseplate
-  const snappedY = baseplateHeight / 2 + BRICK_HEIGHT / 2;
-
-  // Bounds check (world units)
-  const brickHalfWidth = (width * gridSize) / 2;
-  const brickHalfDepth = (depth * gridSize) / 2;
-  const baseplateHalfSize = (baseplateSize * gridSize) / 2;
-
-  const minX = snappedX - brickHalfWidth;
-  const maxX = snappedX + brickHalfWidth;
-  const minZ = snappedZ - brickHalfDepth;
-  const maxZ = snappedZ + brickHalfDepth;
-
-  const isValid =
-    minX >= -baseplateHalfSize &&
-    maxX <= baseplateHalfSize &&
-    minZ >= -baseplateHalfSize &&
-    maxZ <= baseplateHalfSize;
-
-  return {
-    position: [snappedX, snappedY, snappedZ],
-    isValid,
-  };
-};
 // Define brick type configurations
 export const BRICK_TYPES = {
   "1x1": { width: 1, depth: 1, height: 1 },
@@ -288,10 +209,8 @@ const InstancedBrickGroup = React.forwardRef(
 
 // Instanced LEGO Brick System - groups bricks by type ONLY (not by color)
 export const InstancedLegoBricks = () => {
-  const { bricks, selectedBrickId, selectBrick } = useBrickStore();
+  const { bricks, selectedBrickId } = useBrickStore();
   const instancedMeshRefs = useRef(new Map());
-  const raycaster = useRef(new THREE.Raycaster());
-  const mouse = useRef(new THREE.Vector2());
 
   // Group bricks by type ONLY (not by color) to allow individual brick colors
   const brickGroups = useMemo(() => {
@@ -331,50 +250,8 @@ export const InstancedLegoBricks = () => {
     return geoms;
   }, []);
 
-  // Handle click interactions
-  const handleClick = (event) => {
-    // Convert mouse position to normalized device coordinates
-    const rect = event.target.getBoundingClientRect();
-    mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-    // Update the picking ray with the camera and mouse position
-    raycaster.current.setFromCamera(mouse.current, event.camera);
-
-    // Check intersections with instanced meshes
-    let closestIntersection = null;
-    let closestDistance = Infinity;
-    let clickedBrick = null;
-
-    instancedMeshRefs.current.forEach((meshRef, key) => {
-      if (meshRef.current) {
-        const intersects = raycaster.current.intersectObject(meshRef.current);
-
-        if (intersects.length > 0) {
-          const intersection = intersects[0];
-          if (intersection.distance < closestDistance) {
-            closestDistance = intersection.distance;
-            closestIntersection = intersection;
-
-            // Find which brick instance was clicked
-            const group = brickGroups.get(key);
-            if (group && intersection.instanceId !== undefined) {
-              clickedBrick = group.instances[intersection.instanceId];
-            }
-          }
-        }
-      }
-    });
-
-    if (clickedBrick) {
-      selectBrick(clickedBrick.id);
-    } else {
-      selectBrick(null);
-    }
-  };
-
   return (
-    <group onClick={handleClick}>
+    <group>
       {Array.from(brickGroups.entries()).map(([key, group]) => (
         <InstancedBrickGroup
           key={key}
