@@ -1,182 +1,241 @@
 import useBrickStore from "store/useBrickStore";
 import { BRICK_TYPES } from "3d/LegoBrick";
 
-// LEGO color palette
-const LEGO_COLORS = [
-  { name: "Red", value: "#ff0000" },
-  { name: "Blue", value: "#0055bf" },
-  { name: "Yellow", value: "#ffd700" },
-  { name: "Green", value: "#00af4d" },
-  { name: "Orange", value: "#ff8c00" },
-  { name: "Purple", value: "#81007b" },
-  { name: "Pink", value: "#ff69b4" },
-  { name: "Brown", value: "#8b4513" },
-  { name: "Gray", value: "#6d6e70" },
-  { name: "Dark Gray", value: "#4a4c4e" },
-  { name: "Light Gray", value: "#9c9c9c" },
-  { name: "White", value: "#f4f4f4" },
-];
+// Define consistent colors for brick sizes (same as BrickPicker)
+const BRICK_SIZE_COLORS = {
+  "1x1": "#ff0000", // Red
+  "1x2": "#0055bf", // Blue
+  "1x4": "#00af4d", // Green
+  "2x2": "#ffd700", // Yellow
+  "2x4": "#ff8c00", // Orange
+  "2x6": "#81007b", // Purple
+  "2x8": "#ff69b4", // Pink
+};
 
-// Build mode selector component
-const BuildModeSelector = () => {
+// Get default color for a brick type
+export const getBrickDefaultColor = (brickType) => {
+  return BRICK_SIZE_COLORS[brickType] || "#6d6e70";
+};
+
+// Individual brick size button component
+const BrickSizeButton = ({ type, isSelected, onClick }) => {
+  const dims = BRICK_TYPES[type];
+  const color = getBrickDefaultColor(type);
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "12px 16px",
+        background: isSelected
+          ? "rgba(255, 255, 255, 0.15)"
+          : "rgba(255, 255, 255, 0.05)",
+        border: isSelected ? `2px solid ${color}` : "2px solid transparent",
+        borderRadius: "8px",
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        minWidth: "80px",
+        height: "80px",
+        position: "relative",
+        overflow: "hidden",
+      }}
+      onMouseEnter={(e) => {
+        if (!isSelected) {
+          e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+          e.currentTarget.style.transform = "translateY(-2px)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isSelected) {
+          e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+          e.currentTarget.style.transform = "translateY(0)";
+        }
+      }}
+    >
+      {/* Selection glow effect */}
+      {isSelected && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: `linear-gradient(135deg, ${color}22, ${color}44)`,
+            borderRadius: "6px",
+            zIndex: 0,
+          }}
+        />
+      )}
+
+      {/* Brick visual representation */}
+      <div
+        style={{
+          width: "32px",
+          height: "24px",
+          background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+          borderRadius: "3px",
+          border: "1px solid rgba(0, 0, 0, 0.3)",
+          position: "relative",
+          marginBottom: "6px",
+          boxShadow: isSelected
+            ? `0 2px 8px ${color}66`
+            : "0 1px 3px rgba(0, 0, 0, 0.3)",
+          zIndex: 1,
+        }}
+      >
+        {/* Studs visualization */}
+        <div
+          style={{
+            position: "absolute",
+            top: "2px",
+            left: "2px",
+            right: "2px",
+            bottom: "2px",
+            display: "grid",
+            gridTemplateColumns: `repeat(${Math.min(dims.width, 4)}, 1fr)`,
+            gridTemplateRows: `repeat(${Math.min(dims.depth, 3)}, 1fr)`,
+            gap: "1px",
+          }}
+        >
+          {Array.from({
+            length: Math.min(dims.width * dims.depth, 12),
+          }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                background: "rgba(255, 255, 255, 0.4)",
+                borderRadius: "50%",
+                border: "1px solid rgba(0, 0, 0, 0.2)",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Brick type label */}
+      <div
+        style={{
+          fontSize: "11px",
+          color: isSelected ? "#ffffff" : "#cccccc",
+          fontWeight: isSelected ? "bold" : "500",
+          textAlign: "center",
+          zIndex: 1,
+          textShadow: "0 1px 2px rgba(0, 0, 0, 0.5)",
+        }}
+      >
+        {type}
+      </div>
+    </button>
+  );
+};
+
+// Build mode toggle component
+const BuildModeToggle = () => {
   const { buildMode, setBuildMode } = useBrickStore();
 
   const modes = [
-    { id: "place", label: "Place", icon: "🔧" },
+    { id: "place", label: "Build", icon: "🔨" },
     { id: "select", label: "Select", icon: "👆" },
-    { id: "remove", label: "Remove", icon: "🗑️" },
+    { id: "remove", label: "Demolish", icon: "💥" },
   ];
 
   return (
-    <div style={{ marginBottom: "16px" }}>
-      <BuildModeSelector />
-      <BrickTypeSelector />
-      <ColorPicker />
-      <StatsPanel />
-      <ActionButtons />
-      <HelpText />
+    <div style={{ display: "flex", gap: "4px" }}>
+      {modes.map((mode) => (
+        <button
+          key={mode.id}
+          onClick={() => setBuildMode(mode.id)}
+          style={{
+            padding: "8px 12px",
+            background:
+              buildMode === mode.id
+                ? "rgba(0, 168, 204, 0.8)"
+                : "rgba(255, 255, 255, 0.1)",
+            color: "#ffffff",
+            border:
+              buildMode === mode.id
+                ? "2px solid #00a8cc"
+                : "2px solid transparent",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            transition: "all 0.2s ease",
+            textShadow: "0 1px 2px rgba(0, 0, 0, 0.5)",
+          }}
+          onMouseEnter={(e) => {
+            if (buildMode !== mode.id) {
+              e.currentTarget.style.background = "rgba(255, 255, 255, 0.15)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (buildMode !== mode.id) {
+              e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+            }
+          }}
+        >
+          <span>{mode.icon}</span>
+          <span>{mode.label}</span>
+        </button>
+      ))}
     </div>
   );
 };
 
-// Scene UI component that includes all UI elements
-const SceneUI = () => {
-  return (
-    <>
-      <MainUIPanel />
-    </>
-  );
-};
-
-export default SceneUI;
-
-// Brick type selector component
-const BrickTypeSelector = () => {
-  const { selectedBrickType, setBrickType } = useBrickStore();
-
-  return (
-    <div style={{ marginBottom: "16px" }}>
-      <div style={{ fontSize: "12px", color: "#cccccc", marginBottom: "8px" }}>
-        Brick Type:
-      </div>
-      <select
-        value={selectedBrickType}
-        onChange={(e) => setBrickType(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "8px 12px",
-          background: "rgba(61, 61, 61, 0.9)",
-          color: "white",
-          border: "1px solid #404040",
-          borderRadius: "6px",
-          fontSize: "14px",
-          cursor: "pointer",
-        }}
-      >
-        {Object.keys(BRICK_TYPES).map((type) => {
-          const dims = BRICK_TYPES[type];
-          return (
-            <option key={type} value={type}>
-              {type} ({dims.width}×{dims.depth}×{dims.height})
-            </option>
-          );
-        })}
-      </select>
-    </div>
-  );
-};
-
-// Color picker component
-const ColorPicker = () => {
-  const { selectedColor, setColor } = useBrickStore();
-
-  return (
-    <div style={{ marginBottom: "16px" }}>
-      <div style={{ fontSize: "12px", color: "#cccccc", marginBottom: "8px" }}>
-        Color:
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "6px",
-        }}
-      >
-        {LEGO_COLORS.map((color) => (
-          <button
-            key={color.value}
-            onClick={() => setColor(color.value)}
-            title={color.name}
-            style={{
-              width: "32px",
-              height: "32px",
-              background: color.value,
-              border:
-                selectedColor === color.value
-                  ? "3px solid #00a8cc"
-                  : "1px solid #404040",
-              borderRadius: "6px",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              boxShadow:
-                selectedColor === color.value
-                  ? "0 0 8px rgba(0, 168, 204, 0.5)"
-                  : "none",
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Stats panel component
-const StatsPanel = () => {
+// Stats display component
+const StatsDisplay = () => {
   const { bricks, selectedBrickId } = useBrickStore();
-
-  const bricksByType = bricks.reduce((acc, brick) => {
-    acc[brick.type] = (acc[brick.type] || 0) + 1;
-    return acc;
-  }, {});
 
   return (
     <div
       style={{
-        borderTop: "1px solid #404040",
-        paddingTop: "16px",
-        fontSize: "12px",
-        color: "#cccccc",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "8px 16px",
+        background: "rgba(0, 0, 0, 0.3)",
+        borderRadius: "6px",
+        minWidth: "120px",
       }}
     >
       <div
-        style={{ marginBottom: "8px", fontWeight: "bold", color: "#ffffff" }}
+        style={{
+          fontSize: "11px",
+          color: "#cccccc",
+          marginBottom: "2px",
+          textShadow: "0 1px 2px rgba(0, 0, 0, 0.5)",
+        }}
       >
-        📊 Statistics
+        Total Bricks
       </div>
-      <div style={{ marginBottom: "4px" }}>
-        Total Bricks: <span style={{ color: "#00a8cc" }}>{bricks.length}</span>
+      <div
+        style={{
+          fontSize: "18px",
+          color: "#00a8cc",
+          fontWeight: "bold",
+          textShadow: "0 1px 2px rgba(0, 0, 0, 0.5)",
+        }}
+      >
+        {bricks.length}
       </div>
-      <div style={{ marginBottom: "8px" }}>
-        Selected:{" "}
-        {selectedBrickId ? (
-          <span style={{ color: "#ffd700" }}>
-            Brick {selectedBrickId.slice(-8)}
-          </span>
-        ) : (
-          <span style={{ color: "#888888" }}>None</span>
-        )}
-      </div>
-
-      {Object.keys(bricksByType).length > 0 && (
-        <div>
-          <div style={{ marginBottom: "4px", fontWeight: "bold" }}>
-            By Type:
-          </div>
-          {Object.entries(bricksByType).map(([type, count]) => (
-            <div key={type} style={{ fontSize: "11px", marginBottom: "2px" }}>
-              {type}: {count}
-            </div>
-          ))}
+      {selectedBrickId && (
+        <div
+          style={{
+            fontSize: "9px",
+            color: "#ffd700",
+            marginTop: "2px",
+            textShadow: "0 1px 2px rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          Selected
         </div>
       )}
     </div>
@@ -188,101 +247,140 @@ const ActionButtons = () => {
   const { clearAll, selectedBrickId, removeBrick } = useBrickStore();
 
   return (
-    <div style={{ marginTop: "16px" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {selectedBrickId && (
-          <button
-            onClick={() => removeBrick(selectedBrickId)}
-            style={{
-              width: "100%",
-              padding: "8px",
-              background: "#ff8c00",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "12px",
-              fontWeight: "bold",
-            }}
-          >
-            Remove Selected
-          </button>
-        )}
-
+    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+      {selectedBrickId && (
         <button
-          onClick={clearAll}
+          onClick={() => removeBrick(selectedBrickId)}
           style={{
-            width: "100%",
-            padding: "8px",
-            background: "#dc3545",
+            padding: "8px 12px",
+            background: "rgba(255, 140, 0, 0.8)",
             color: "white",
-            border: "none",
+            border: "2px solid #ff8c00",
             borderRadius: "6px",
             cursor: "pointer",
-            fontSize: "12px",
+            fontSize: "11px",
             fontWeight: "bold",
+            textShadow: "0 1px 2px rgba(0, 0, 0, 0.5)",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(255, 140, 0, 1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(255, 140, 0, 0.8)";
           }}
         >
-          Clear All
+          🗑️ Remove
         </button>
-      </div>
-    </div>
-  );
-};
+      )}
 
-// Help text component
-const HelpText = () => {
-  return (
-    <div
-      style={{
-        marginTop: "12px",
-        fontSize: "11px",
-        color: "#888888",
-        lineHeight: "1.4",
-      }}
-    >
-      <div>• Click surface to place bricks</div>
-      <div>• Click bricks to select them</div>
-      <div>• Use mouse to orbit camera</div>
-      <div>• Scroll to zoom in/out</div>
-    </div>
-  );
-};
-
-// Main UI panel component
-const MainUIPanel = () => {
-  return (
-    <div
-      className="scene__info"
-      style={{
-        position: "absolute",
-        top: "20px",
-        left: "20px",
-        background: "rgba(45, 45, 45, 0.95)",
-        padding: "20px",
-        borderRadius: "12px",
-        color: "white",
-        fontFamily: "Inter, sans-serif",
-        fontSize: "14px",
-        backdropFilter: "blur(10px)",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        minWidth: "280px",
-        maxWidth: "320px",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-      }}
-    >
-      <div
+      <button
+        onClick={clearAll}
         style={{
+          padding: "8px 12px",
+          background: "rgba(220, 53, 69, 0.8)",
+          color: "white",
+          border: "2px solid #dc3545",
+          borderRadius: "6px",
+          cursor: "pointer",
+          fontSize: "11px",
           fontWeight: "bold",
-          marginBottom: "20px",
-          fontSize: "18px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
+          textShadow: "0 1px 2px rgba(0, 0, 0, 0.5)",
+          transition: "all 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(220, 53, 69, 1)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "rgba(220, 53, 69, 0.8)";
         }}
       >
-        🧱 LEGO Builder
+        🧹 Clear All
+      </button>
+    </div>
+  );
+};
+
+// Main bottom toolbar component
+const BottomToolbar = () => {
+  const { selectedBrickType, setBrickType, setColor } = useBrickStore();
+
+  const handleBrickSelect = (type) => {
+    const newColor = getBrickDefaultColor(type);
+    setBrickType(type);
+    setColor(newColor);
+
+    // Debug log to ensure colors are being set correctly
+    console.log(`Selected brick type: ${type}, Color: ${newColor}`);
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background:
+          "linear-gradient(to top, rgba(20, 20, 20, 0.95), rgba(40, 40, 40, 0.9))",
+        backdropFilter: "blur(10px)",
+        borderTop: "2px solid rgba(255, 255, 255, 0.1)",
+        padding: "16px 20px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "20px",
+        boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.3)",
+        zIndex: 1000,
+      }}
+    >
+      {/* Left section - Build modes */}
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div
+          style={{
+            color: "#ffffff",
+            fontSize: "16px",
+            fontWeight: "bold",
+            textShadow: "0 1px 2px rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          🧱 LEGO Builder
+        </div>
+        <BuildModeToggle />
+      </div>
+
+      {/* Center section - Brick size selection */}
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          flex: 1,
+          justifyContent: "center",
+          maxWidth: "600px",
+        }}
+      >
+        {Object.keys(BRICK_TYPES).map((type) => (
+          <BrickSizeButton
+            key={type}
+            type={type}
+            isSelected={selectedBrickType === type}
+            onClick={() => handleBrickSelect(type)}
+          />
+        ))}
+      </div>
+
+      {/* Right section - Stats and actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <StatsDisplay />
+        <ActionButtons />
       </div>
     </div>
   );
 };
+
+// Scene UI component
+const SceneUI = () => {
+  return <BottomToolbar />;
+};
+
+export default SceneUI;

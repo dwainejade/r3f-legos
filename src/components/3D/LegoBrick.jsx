@@ -48,26 +48,22 @@ const InstancedBrickGroup = React.forwardRef(
   ({ group, geometry, selectedBrickId }, ref) => {
     const meshRef = useRef();
     const studMeshRef = useRef();
-    const { instances, color, type } = group;
+    const { instances, type } = group;
 
-    // Create materials
-    const material = useMemo(() => {
-      return new THREE.MeshLambertMaterial({
-        color: new THREE.Color(color),
-      });
-    }, [color]);
+    const material = useMemo(
+      () =>
+        new THREE.MeshLambertMaterial({
+          color: 0xffffff, // base white, instance colors will override
+        }),
+      []
+    );
 
-    // Create stud geometry
-    const studGeometry = useMemo(() => {
-      return new THREE.CylinderGeometry(
-        STUD_RADIUS,
-        STUD_RADIUS,
-        STUD_HEIGHT,
-        12
-      );
-    }, []);
+    const studGeometry = useMemo(
+      () =>
+        new THREE.CylinderGeometry(STUD_RADIUS, STUD_RADIUS, STUD_HEIGHT, 12),
+      []
+    );
 
-    // Calculate stud positions for this brick type
     const studPositionsPerBrick = useMemo(() => {
       const dims = BRICK_TYPES[type];
       const positions = [];
@@ -89,135 +85,100 @@ const InstancedBrickGroup = React.forwardRef(
 
     const totalStuds = instances.length * studPositionsPerBrick.length;
 
-    // Update instance matrices for main bricks
+    // Create meshes ONCE
     useEffect(() => {
-      if (!meshRef.current || !instances.length) return;
+      if (!meshRef.current) return;
 
+      // Initialize base colors and matrices so there’s no black frame
       const mesh = meshRef.current;
-      mesh.count = instances.length;
-
       const matrix = new THREE.Matrix4();
       const position = new THREE.Vector3();
       const quaternion = new THREE.Quaternion();
       const scale = new THREE.Vector3(1, 1, 1);
+      const tempColor = new THREE.Color();
 
       instances.forEach((brick, index) => {
-        position.set(brick.position[0], brick.position[1], brick.position[2]);
-        quaternion.setFromEuler(
-          new THREE.Euler(
-            brick.rotation[0],
-            brick.rotation[1],
-            brick.rotation[2]
-          )
-        );
-
+        position.set(...brick.position);
+        quaternion.setFromEuler(new THREE.Euler(...brick.rotation));
         matrix.compose(position, quaternion, scale);
         mesh.setMatrixAt(index, matrix);
 
-        // Set selection state per instance
-        mesh.setColorAt(
-          index,
-          selectedBrickId === brick.id
-            ? new THREE.Color(color).multiplyScalar(1.3)
-            : new THREE.Color(color)
-        );
+        tempColor.set(brick.color);
+        if (selectedBrickId === brick.id) tempColor.multiplyScalar(1.3);
+
+        mesh.setColorAt(index, tempColor);
       });
 
+      mesh.count = instances.length;
       mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) {
-        mesh.instanceColor.needsUpdate = true;
-      }
-    }, [instances, selectedBrickId, color]);
+      mesh.instanceColor.needsUpdate = true;
+    }, [instances, selectedBrickId]);
 
-    // Update instance matrices for studs
+    // Same for studs
     useEffect(() => {
-      if (
-        !studMeshRef.current ||
-        !instances.length ||
-        !studPositionsPerBrick.length
-      )
-        return;
+      if (!studMeshRef.current) return;
 
       const studMesh = studMeshRef.current;
-      studMesh.count = totalStuds;
-
       const matrix = new THREE.Matrix4();
       const position = new THREE.Vector3();
       const quaternion = new THREE.Quaternion();
       const scale = new THREE.Vector3(1, 1, 1);
+      const tempColor = new THREE.Color();
 
       let studIndex = 0;
-      instances.forEach((brick, brickIndex) => {
-        const brickPosition = new THREE.Vector3(
-          brick.position[0],
-          brick.position[1],
-          brick.position[2]
-        );
-        const brickQuaternion = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(
-            brick.rotation[0],
-            brick.rotation[1],
-            brick.rotation[2]
-          )
+      instances.forEach((brick) => {
+        const brickPos = new THREE.Vector3(...brick.position);
+        const brickQuat = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(...brick.rotation)
         );
 
         studPositionsPerBrick.forEach((studPos) => {
-          // Transform stud position relative to brick
-          const worldStudPos = new THREE.Vector3(
-            studPos[0],
-            studPos[1],
-            studPos[2]
-          );
-          worldStudPos.applyQuaternion(brickQuaternion);
-          worldStudPos.add(brickPosition);
+          const worldStudPos = new THREE.Vector3(...studPos);
+          worldStudPos.applyQuaternion(brickQuat).add(brickPos);
 
           position.copy(worldStudPos);
-          matrix.compose(position, brickQuaternion, scale);
+          matrix.compose(position, brickQuat, scale);
           studMesh.setMatrixAt(studIndex, matrix);
 
-          // Set stud color to match brick
-          studMesh.setColorAt(
-            studIndex,
-            selectedBrickId === brick.id
-              ? new THREE.Color(color).multiplyScalar(1.3)
-              : new THREE.Color(color)
-          );
+          tempColor.set(brick.color);
+          if (selectedBrickId === brick.id) tempColor.multiplyScalar(1.3);
 
+          studMesh.setColorAt(studIndex, tempColor);
           studIndex++;
         });
       });
 
+      studMesh.count = totalStuds;
       studMesh.instanceMatrix.needsUpdate = true;
-      if (studMesh.instanceColor) {
-        studMesh.instanceColor.needsUpdate = true;
-      }
-    }, [instances, selectedBrickId, color, studPositionsPerBrick, totalStuds]);
+      studMesh.instanceColor.needsUpdate = true;
+    }, [instances, selectedBrickId, studPositionsPerBrick, totalStuds]);
 
-    // Expose ref for click detection
+    // Expose mesh ref for raycasting
     useEffect(() => {
-      if (ref) {
-        if (typeof ref === "function") {
-          ref(meshRef);
-        } else {
-          ref.current = meshRef;
-        }
-      }
+      if (!ref) return;
+      if (typeof ref === "function") ref(meshRef);
+      else ref.current = meshRef;
     }, [ref]);
 
-    if (!instances.length || !geometry) return null;
+    if (!geometry) return null;
 
     return (
       <group>
         {/* Main brick bodies */}
         <instancedMesh
           ref={meshRef}
-          args={[geometry, material, instances.length]}
+          args={[geometry, material, Math.max(instances.length, 1)]}
           castShadow
           receiveShadow
         >
           <instancedBufferAttribute
             attach="instanceColor"
-            args={[new Float32Array(instances.length * 3), 3]}
+            args={[
+              Float32Array.from(
+                instances.flatMap((b) => new THREE.Color(b.color).toArray())
+              ),
+              3,
+            ]}
           />
         </instancedMesh>
 
@@ -225,12 +186,21 @@ const InstancedBrickGroup = React.forwardRef(
         {totalStuds > 0 && (
           <instancedMesh
             ref={studMeshRef}
-            args={[studGeometry, material, totalStuds]}
+            args={[studGeometry, material, Math.max(totalStuds, 1)]}
             castShadow
           >
             <instancedBufferAttribute
               attach="instanceColor"
-              args={[new Float32Array(totalStuds * 3), 3]}
+              args={[
+                Float32Array.from(
+                  instances.flatMap((b) =>
+                    studPositionsPerBrick.flatMap(() =>
+                      new THREE.Color(b.color).toArray()
+                    )
+                  )
+                ),
+                3,
+              ]}
             />
           </instancedMesh>
         )}
@@ -239,23 +209,23 @@ const InstancedBrickGroup = React.forwardRef(
   }
 );
 
-// Instanced LEGO Brick System - groups bricks by type and color for optimal performance
+// Instanced LEGO Brick System - groups bricks by type ONLY (not by color)
 export const InstancedLegoBricks = () => {
   const { bricks, selectedBrickId, selectBrick } = useBrickStore();
   const instancedMeshRefs = useRef(new Map());
   const raycaster = useRef(new THREE.Raycaster());
   const mouse = useRef(new THREE.Vector2());
 
-  // Group bricks by type and color for instancing
+  // Group bricks by type ONLY (not by color) to allow individual brick colors
   const brickGroups = useMemo(() => {
     const groups = new Map();
 
     bricks.forEach((brick) => {
-      const key = `${brick.type}-${brick.color}`;
+      const key = brick.type; // Only group by type, not color
       if (!groups.has(key)) {
         groups.set(key, {
           type: brick.type,
-          color: brick.color,
+          color: "#ffffff", // Base color, individual colors will be set via instance attributes
           dimensions: BRICK_TYPES[brick.type],
           instances: [],
         });

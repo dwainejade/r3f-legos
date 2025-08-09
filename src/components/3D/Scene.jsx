@@ -6,9 +6,11 @@ import {
   BrickPlacer,
   createPhysicsBrick,
 } from "./LegoBrick";
+import CursorPreviewBrick from "./PreviewBrick";
 import SceneLights from "./SceneLights";
 import SceneUI from "ui/SceneUI";
 import useBrickStore from "store/useBrickStore";
+import { getBrickDefaultColor } from "ui/BrickPicker";
 
 // Grid helper component
 const GridHelper = ({ size = 20, divisions = 20, colorGrid = "#404040" }) => {
@@ -22,47 +24,14 @@ const GridHelper = ({ size = 20, divisions = 20, colorGrid = "#404040" }) => {
 
 // Main Scene Component
 const Scene = () => {
-  const { bricks } = useBrickStore();
+  const { bricks, setBrickType, setColor } = useBrickStore();
 
-  // Initialize demo bricks if none exist
+  // Initialize default brick type and color on startup
   useEffect(() => {
-    if (bricks.length === 0) {
-      const demoBricks = [
-        {
-          type: "2x4",
-          position: [0, 0, 0],
-          rotation: [0, 0, 0],
-          color: "#ff0000",
-        },
-        {
-          type: "2x2",
-          position: [2, 0, 0],
-          rotation: [0, 0, 0],
-          color: "#0055bf",
-        },
-        {
-          type: "1x2",
-          position: [0, 1, 0],
-          rotation: [0, 0, 0],
-          color: "#ffd700",
-        },
-        {
-          type: "1x1",
-          position: [-1, 0, 0],
-          rotation: [0, 0, 0],
-          color: "#00af4d",
-        },
-        {
-          type: "2x6",
-          position: [0, 0, -3],
-          rotation: [0, 0, 0],
-          color: "#ff8c00",
-        },
-      ].map(createPhysicsBrick);
-
-      demoBricks.forEach((brick) => useBrickStore.getState().addBrick(brick));
-    }
-  }, [bricks.length]);
+    // Set initial brick type and color
+    setBrickType("2x4");
+    setColor(getBrickDefaultColor("2x4"));
+  }, [setBrickType, setColor]);
 
   return (
     <div
@@ -86,6 +55,9 @@ const Scene = () => {
         {/* LEGO Bricks */}
         <InstancedLegoBricks />
 
+        {/* Cursor Preview Brick */}
+        <CursorPreviewBrick />
+
         {/* Camera Controls */}
         <OrbitControls
           enablePan={true}
@@ -97,6 +69,7 @@ const Scene = () => {
           dampingFactor={0.05}
           enableDamping={true}
         />
+
         {/* Performance Stats */}
         <Stats showPanel={0} className="stats" />
       </Canvas>
