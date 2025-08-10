@@ -3,6 +3,7 @@ import EditorModeSelector from "components/UI/EditorModeSelector";
 import TransformModeSelector from "components/UI/TransformModeSelector";
 import PropertyPanel from "components/UI/PropertyPanel";
 import Toolbar from "components/UI/Toolbar";
+import GridControls from "./components/UI/GridControls";
 
 const GeometryBuilder = () => {
   return (
@@ -23,6 +24,9 @@ const GeometryBuilder = () => {
       <TransformModeSelector />
       <PropertyPanel />
       <Toolbar />
+      <GridControls />
+
+      {/* Background Overlay */}
     </div>
   );
 };

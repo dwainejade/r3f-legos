@@ -5,7 +5,8 @@ import { useShapeStore } from "store/useShapeStore";
 
 const Shape = ({ shape, isSelected, onSelect, onRemove }) => {
   const meshRef = useRef();
-  const { updateShape, transformMode, editorMode } = useShapeStore();
+  const { updateShape, transformMode, editorMode, getSnapSize } =
+    useShapeStore();
 
   const geometry = useMemo(() => {
     switch (shape.type) {
@@ -33,9 +34,8 @@ const Shape = ({ shape, isSelected, onSelect, onRemove }) => {
     let color = shape.color;
     let opacity = 1.0;
 
-    // Different visual states based on editor mode
     if (editorMode === "remove") {
-      color = "#ff4444"; // Red tint for removal mode
+      color = "#ff4444";
       opacity = 0.8;
     } else if (isSelected) {
       opacity = 0.8;
@@ -64,28 +64,72 @@ const Shape = ({ shape, isSelected, onSelect, onRemove }) => {
     } else if (editorMode === "select") {
       onSelect(shape.id);
     }
-    // In 'add' mode, clicking shapes does nothing
+  };
+
+  // Perfect grid snapping function
+  const snapToGridPerfect = (value, snapSize) => {
+    if (!snapSize) return value;
+    return Math.round(value / snapSize) * snapSize;
   };
 
   const handleTransformChange = () => {
     if (meshRef.current && isSelected && editorMode === "select") {
-      const newPosition = [
-        meshRef.current.position.x,
-        meshRef.current.position.y,
-        meshRef.current.position.z,
-      ];
+      const snapSize = getSnapSize();
 
-      const newRotation = [
-        meshRef.current.rotation.x,
-        meshRef.current.rotation.y,
-        meshRef.current.rotation.z,
-      ];
+      // Handle position snapping (translation)
+      let newPosition;
+      if (transformMode === "translate" && snapSize) {
+        newPosition = [
+          snapToGridPerfect(meshRef.current.position.x, snapSize),
+          snapToGridPerfect(meshRef.current.position.y, snapSize),
+          snapToGridPerfect(meshRef.current.position.z, snapSize),
+        ];
 
-      const newScale = [
-        meshRef.current.scale.x,
-        meshRef.current.scale.y,
-        meshRef.current.scale.z,
-      ];
+        // Apply snapped position back to mesh for immediate visual feedback
+        meshRef.current.position.set(...newPosition);
+      } else {
+        newPosition = [
+          meshRef.current.position.x,
+          meshRef.current.position.y,
+          meshRef.current.position.z,
+        ];
+      }
+
+      // Handle rotation snapping
+      let newRotation;
+      if (transformMode === "rotate") {
+        newRotation = [
+          meshRef.current.rotation.x,
+          meshRef.current.rotation.y,
+          meshRef.current.rotation.z,
+        ];
+      } else {
+        newRotation = [
+          meshRef.current.rotation.x,
+          meshRef.current.rotation.y,
+          meshRef.current.rotation.z,
+        ];
+      }
+
+      // Handle scale snapping
+      let newScale;
+      if (transformMode === "scale") {
+        const scaleSnapSize = 0.1; // You can make this configurable too
+        newScale = [
+          snapToGridPerfect(meshRef.current.scale.x, scaleSnapSize),
+          snapToGridPerfect(meshRef.current.scale.y, scaleSnapSize),
+          snapToGridPerfect(meshRef.current.scale.z, scaleSnapSize),
+        ];
+
+        // Apply snapped scale back to mesh
+        meshRef.current.scale.set(...newScale);
+      } else {
+        newScale = [
+          meshRef.current.scale.x,
+          meshRef.current.scale.y,
+          meshRef.current.scale.z,
+        ];
+      }
 
       updateShape(shape.id, {
         position: newPosition,
@@ -106,7 +150,7 @@ const Shape = ({ shape, isSelected, onSelect, onRemove }) => {
         receiveShadow
       />
 
-      {/* Transform Controls - only show for selected shape in select mode */}
+      {/* Transform Controls with perfect grid snapping */}
       {isSelected && editorMode === "select" && meshRef.current && (
         <TransformControls
           object={meshRef.current}
@@ -116,9 +160,10 @@ const Shape = ({ shape, isSelected, onSelect, onRemove }) => {
           showY={true}
           showZ={true}
           space="world"
-          size={0.6}
-          translationSnap={transformMode === "translate" ? 0.5 : null}
+          size={0.8}
+          translationSnap={transformMode === "translate" ? getSnapSize() : null}
           rotationSnap={transformMode === "rotate" ? Math.PI / 4 : null}
+          scaleSnap={transformMode === "scale" ? 0.1 : null}
         />
       )}
     </group>
