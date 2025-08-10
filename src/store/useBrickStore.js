@@ -3,7 +3,7 @@ import { devtools, subscribeWithSelector } from "zustand/middleware";
 
 export const LEGO_UNIT = 0.8;
 export const BRICK_HEIGHT = 0.96;
-export const BASEPLATE_SIZE = 32; // studs
+export const BASEPLATE_SIZE = 200; // studs
 export const BASEPLATE_HEIGHT = 0.32;
 export const BASEPLATE_COLOR = "#00aa00";
 export const STUD_RADIUS = 0.2;

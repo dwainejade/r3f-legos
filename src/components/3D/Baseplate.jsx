@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import * as THREE from "three";
 import { createPhysicsBrick } from "./LegoBrick";
 import useBrickStore, {
@@ -7,7 +7,6 @@ import useBrickStore, {
   STUD_RADIUS,
 } from "store/useBrickStore";
 
-// Create baseplate with studs
 const Baseplate = ({
   size = 32, // studs (default 32x32)
   height = 0.32, // default thinner than regular bricks
@@ -23,10 +22,10 @@ const Baseplate = ({
   } = useBrickStore();
 
   const baseplateRef = useRef();
-  const studMeshRef = useRef();
+  const studInstancedRef = useRef();
 
   // Update store baseplate size when this component's size changes
-  React.useEffect(() => {
+  useEffect(() => {
     setBaseplateSize(size);
   }, [size, setBaseplateSize]);
 
@@ -37,41 +36,16 @@ const Baseplate = ({
     return new THREE.BoxGeometry(width, height, depth);
   }, [size, height]);
 
-  // Generate stud positions and geometry
-  const { studGeometry, studPositions } = useMemo(() => {
-    const studGeo = new THREE.CylinderGeometry(
-      STUD_RADIUS * 0.9, // Slightly smaller for baseplate
-      STUD_RADIUS * 0.9,
-      STUD_HEIGHT * 0.8, // Slightly shorter
-      12
-    );
-
-    const positions = [];
-    const studSpacing = LEGO_UNIT;
-    const startX = (-(size - 1) * studSpacing) / 2;
-    const startZ = (-(size - 1) * studSpacing) / 2;
-
-    for (let x = 0; x < size; x++) {
-      for (let z = 0; z < size; z++) {
-        positions.push([
-          startX + x * studSpacing,
-          height / 2 + (STUD_HEIGHT * 0.8) / 2,
-          startZ + z * studSpacing,
-        ]);
-      }
-    }
-
-    return { studGeometry: studGeo, studPositions: positions };
-  }, [size, height]);
-
-  // Materials
-  const baseplateMaterial = useMemo(
+  // Create stud geometry and material once
+  const studGeometry = useMemo(
     () =>
-      new THREE.MeshLambertMaterial({
-        color: color,
-        transparent: false,
-      }),
-    [color]
+      new THREE.CylinderGeometry(
+        STUD_RADIUS * 0.9, // Slightly smaller for baseplate
+        STUD_RADIUS * 0.9,
+        STUD_HEIGHT * 0.8, // Slightly shorter
+        12
+      ),
+    []
   );
 
   const studMaterial = useMemo(
@@ -82,6 +56,33 @@ const Baseplate = ({
       }),
     [color]
   );
+
+  // Set matrices for each stud instance
+  useEffect(() => {
+    if (!studInstancedRef.current) return;
+
+    const instancedMesh = studInstancedRef.current;
+    const dummy = new THREE.Object3D();
+
+    const studSpacing = LEGO_UNIT;
+    const startX = (-(size - 1) * studSpacing) / 2;
+    const startZ = (-(size - 1) * studSpacing) / 2;
+
+    let index = 0;
+    for (let x = 0; x < size; x++) {
+      for (let z = 0; z < size; z++) {
+        dummy.position.set(
+          startX + x * studSpacing,
+          height / 2 + (STUD_HEIGHT * 0.8) / 2,
+          startZ + z * studSpacing
+        );
+        dummy.updateMatrix();
+        instancedMesh.setMatrixAt(index, dummy.matrix);
+        index++;
+      }
+    }
+    instancedMesh.instanceMatrix.needsUpdate = true;
+  }, [size, height]);
 
   // Handle click on baseplate for placing bricks
   const handleBaseplateClick = (event) => {
@@ -113,24 +114,24 @@ const Baseplate = ({
       <mesh
         ref={baseplateRef}
         geometry={baseplateGeometry}
-        material={baseplateMaterial}
+        material={
+          new THREE.MeshLambertMaterial({
+            color: color,
+            transparent: false,
+          })
+        }
         position={[0, 0, 0]}
         onClick={handleBaseplateClick}
         receiveShadow
         castShadow
       />
 
-      {/* Baseplate studs */}
-      {studPositions.map((position, index) => (
-        <mesh
-          key={index}
-          ref={index === 0 ? studMeshRef : undefined}
-          geometry={studGeometry}
-          material={studMaterial}
-          position={position}
-          castShadow
-        />
-      ))}
+      {/* Instanced studs */}
+      <instancedMesh
+        ref={studInstancedRef}
+        args={[studGeometry, studMaterial, size * size]}
+        castShadow
+      />
 
       {/* Baseplate border (optional visual enhancement) */}
       <mesh position={[0, -height / 4, 0]}>

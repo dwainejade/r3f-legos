@@ -1,5 +1,3 @@
-import React from "react";
-
 // Main lighting setup for the LEGO scene
 const SceneLights = () => {
   return (

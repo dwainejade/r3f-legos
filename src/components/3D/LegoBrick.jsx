@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo, useEffect, forwardRef } from "react";
 import * as THREE from "three";
 import useBrickStore, {
   LEGO_UNIT,
@@ -33,7 +33,7 @@ export const createPhysicsBrick = (brick) => {
 };
 
 // Individual instanced group for each brick type/color combination
-const InstancedBrickGroup = React.forwardRef(
+const InstancedBrickGroup = forwardRef(
   ({ group, geometry, selectedBrickId }, ref) => {
     const meshRef = useRef();
     const studMeshRef = useRef();

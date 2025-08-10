@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import  { useRef, useState, useEffect, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import useBrickStore from "store/useBrickStore";
@@ -24,7 +24,7 @@ const CursorPreviewBrick = () => {
   const mouse = useRef(new THREE.Vector2());
 
   // Create geometry for the selected brick type
-  const brickGeometry = React.useMemo(() => {
+  const brickGeometry = useMemo(() => {
     if (!selectedBrickType) return null;
 
     const dims = BRICK_TYPES[selectedBrickType];
@@ -36,7 +36,7 @@ const CursorPreviewBrick = () => {
   }, [selectedBrickType]);
 
   // Create stud geometry and positions
-  const { studGeometry, studPositions } = React.useMemo(() => {
+  const { studGeometry, studPositions } = useMemo(() => {
     if (!selectedBrickType) return { studGeometry: null, studPositions: [] };
 
     const dims = BRICK_TYPES[selectedBrickType];
@@ -66,7 +66,7 @@ const CursorPreviewBrick = () => {
   }, [selectedBrickType]);
 
   // Create material
-  const material = React.useMemo(() => {
+  const material = useMemo(() => {
     return new THREE.MeshLambertMaterial({
       color: new THREE.Color(selectedColor),
       transparent: true,
@@ -91,7 +91,7 @@ const CursorPreviewBrick = () => {
   });
 
 // Handle mouse move events
-  React.useEffect(() => {
+  useEffect(() => {
     const handleMouseMove = (event) => {
       if (buildMode !== "place" || !brickGeometry) {
         setIsVisible(false);
