@@ -116,8 +116,8 @@ const Shape = ({ shape, isSelected, onSelect, onRemove }) => {
           showY={true}
           showZ={true}
           space="world"
-          size={0.8}
-          translationSnap={transformMode === "translate" ? 1 : null}
+          size={0.6}
+          translationSnap={transformMode === "translate" ? 0.5 : null}
           rotationSnap={transformMode === "rotate" ? Math.PI / 4 : null}
         />
       )}

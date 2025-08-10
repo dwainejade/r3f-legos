@@ -1,6 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Stats } from "@react-three/drei";
-import Grid from "./Grid";
+import { OrbitControls, Stats, Grid, Sky } from "@react-three/drei";
 import ShapeRenderer from "./ShapeRenderer";
 
 const Scene = () => {
@@ -24,13 +23,11 @@ const Scene = () => {
         shadow-camera-top={10}
         shadow-camera-bottom={-10}
       />
-
+      <Sky />
       {/* Grid */}
-      <Grid />
-
+      <Grid args={[20, 20, 1]} position={[0, 0, 0]} />;
       {/* Shapes with Transform Controls */}
       <ShapeRenderer />
-
       {/* Ground plane (invisible, for raycasting) */}
       <mesh
         position={[0, -0.01, 0]}
@@ -40,7 +37,6 @@ const Scene = () => {
         <planeGeometry args={[100, 100]} />
         <meshBasicMaterial />
       </mesh>
-
       {/* Camera Controls */}
       <OrbitControls
         enablePan={true}
@@ -51,7 +47,6 @@ const Scene = () => {
         target={[0, 0, 0]}
         makeDefault
       />
-
       {/* Performance Stats */}
       <Stats />
     </Canvas>
