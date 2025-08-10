@@ -40,8 +40,6 @@ const TransformModeSelector = () => {
   return (
     <div
       style={{
-        position: "absolute",
-        top: "20px",
         left: "340px", // Position next to editor mode selector
         background: "rgba(45, 45, 45, 0.95)",
         padding: "12px",

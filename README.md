@@ -1,8 +1,8 @@
-# LEGO Builder App - Development Outline
+# 3D Geometry Builder - Development Outline
 
 ## App Overview
 
-A 3D LEGO building application that allows users to create, save, and share LEGO constructions in an intuitive browser-based environment.
+A 3D geometric shape building application that allows users to create, manipulate, and customize basic geometric primitives in an intuitive browser-based environment with real-time editing capabilities.
 
 ## Core Architecture
 
@@ -10,19 +10,42 @@ A 3D LEGO building application that allows users to create, save, and share LEGO
 
 - **Frontend**: React + Three.js (via @react-three/fiber)
 - **3D Engine**: Three.js with @react-three/drei utilities
-- **State Management**: React hooks (useState, useReducer)
-- **Physics** (Advanced): @react-three/cannon or similar
-- **File Handling**: Browser File APIs
+- **State Management**: React hooks (useState, useReducer) + Zustand
+- **Interactions**: @use-gesture/react for drag operations
 - **Storage**: Local state (in-memory for Claude artifacts)
 
 ### Key Components
 
 1. **3D Scene Manager** - Handles camera, lighting, rendering
-2. **Brick System** - Core LEGO brick primitive with stud/anti-stud mechanics
-3. **Inventory Panel** - Available brick types and colors
-4. **Build Grid** - Snap-to-grid building surface
-5. **Controls Manager** - Mouse/touch interactions for placing/removing bricks
-6. **Save/Load System** - Project persistence and sharing
+2. **Shape System** - Core geometric primitives with transform handles
+3. **Shape Picker Panel** - Available shape types and properties
+4. **Grid System** - Snap-to-grid building surface with configurable spacing
+5. **Transform Controls** - Real-time editing handles for position, scale, rotation
+6. **Property Panel** - Color picker, dimension inputs, material settings
+7. **Save/Load System** - Project persistence and sharing
+
+---
+
+## Shape System
+
+### Supported Primitives
+
+- **Rectangle/Cube** - Adjustable width, height, depth
+- **Cylinder** - Adjustable radius, height, radial segments
+- **Cone** - Adjustable radius, height, radial segments
+- **Sphere** - Adjustable radius, width/height segments
+- **Triangle Prism** - Adjustable base width, height, depth
+- **Pyramid** - Adjustable base size, height
+
+### Shape Properties
+
+Each shape supports:
+
+- **Position**: X, Y, Z coordinates with grid snapping
+- **Dimensions**: Shape-specific size parameters
+- **Rotation**: Euler angles (X, Y, Z) with snap angles
+- **Color**: Full color picker with material properties
+- **Material**: Basic materials (matte, glossy, metallic)
 
 ---
 
@@ -32,63 +55,64 @@ A 3D LEGO building application that allows users to create, save, and share LEGO
 
 _Essential functionality for a working prototype_
 
-#### Core Building Mechanics
+#### Core Shape Mechanics
 
-- [ ] **Basic brick primitive** (1x1, 2x2, 2x4 rectangular bricks)
-- [ ] **Stud/anti-stud interlocking system** ✅ _Already implemented_
-- [ ] **Click-to-place brick system**
-- [ ] **Grid-based snapping** (bricks align to grid positions)
-- [ ] **Basic collision detection** (prevent overlapping bricks)
-- [ ] **Remove brick functionality** (right-click or delete mode)
+- [ ] **Basic shape primitives** (rectangle, cylinder, sphere)
+- [ ] **Grid-based snapping system** (configurable grid size)
+- [ ] **Click-to-place shape system**
+- [ ] **Shape selection** (click to select, visual feedback)
+- [ ] **Delete shape functionality** (delete key or context menu)
+- [ ] **Basic materials and colors**
 
 #### UI Essentials
 
-- [ ] **Brick selector panel** (choose brick size)
-- [ ] **Color picker** (basic color palette)
+- [ ] **Shape picker panel** (choose shape type)
+- [ ] **Basic color picker** (HSV color wheel)
 - [ ] **Clear all button**
-- [ ] **Basic camera controls** ✅ _OrbitControls already added_
+- [ ] **Camera controls** ✅ _OrbitControls already implemented_
+- [ ] **Grid helper visualization**
 
-#### Visual Polish
+#### Transform System
 
-- [ ] **Proper lighting setup**
-- [ ] **Basic material shaders** (plastic-like appearance)
-- [ ] **Grid helper for building surface**
+- [ ] **Position handles** (drag to move on grid)
+- [ ] **Scale handles** (corner/edge drag to resize)
+- [ ] **Basic rotation** (90-degree snaps)
 
 ---
 
 ### 🟡 MVP FEATURES (Minimum Viable Product)
 
-_Features needed for a usable LEGO builder_
+_Features needed for a usable geometry builder_
 
-#### Enhanced Building
+#### Enhanced Editing
 
-- [ ] **Precise stud-to-stud snapping** (bricks snap to exact stud positions)
-- [ ] **Rotation functionality** (90-degree brick rotation)
-- [ ] **Hover preview** (ghost brick shows where piece will be placed)
-- [ ] **Build validation** (ensure stable structures)
-- [ ] **Undo/Redo system**
+- [ ] **Precise grid snapping** (multiple grid sizes: 0.5, 1, 2 units)
+- [ ] **Rotation handles** (visual rotation gizmos)
+- [ ] **Dimension input fields** (numerical precision)
+- [ ] **Hover preview** (ghost shape shows where piece will be placed)
+- [ ] **Undo/Redo system** (command pattern)
+- [ ] **Multi-selection** (select multiple shapes)
 
-#### Expanded Brick Library
+#### Advanced Shapes
 
-- [ ] **Standard LEGO brick sizes** (1x1, 1x2, 1x4, 2x2, 2x4, 2x6, 2x8)
-- [ ] **Slope bricks** (angled pieces)
-- [ ] **Corner pieces**
-- [ ] **Flat plates** (thinner bricks)
+- [ ] **All primitive types** (rectangle, cylinder, cone, sphere, triangle, pyramid)
+- [ ] **Shape variants** (hollow cylinders, different triangle types)
+- [ ] **Custom segments** (adjustable cylinder/sphere resolution)
 
 #### User Experience
 
-- [ ] **Multi-selection tool** (select multiple bricks)
-- [ ] **Copy/paste functionality**
-- [ ] **Building layers system** (work on different height levels)
-- [ ] **Zoom to fit** (auto-frame camera on creation)
-- [ ] **Keyboard shortcuts** (spacebar to rotate, delete key, etc.)
+- [ ] **Context menus** (right-click for shape options)
+- [ ] **Copy/paste/duplicate** (with offset positioning)
+- [ ] **Keyboard shortcuts** (G for move, S for scale, R for rotate)
+- [ ] **Layer system** (organize shapes in groups)
+- [ ] **Property panel** (detailed shape configuration)
 
 #### Save/Load System
 
-- [ ] **Save creation to JSON**
-- [ ] **Load creation from JSON**
+- [ ] **Save scene to JSON**
+- [ ] **Load scene from JSON**
 - [ ] **Export to image** (screenshot functionality)
-- [ ] **Project naming system**
+- [ ] **Scene naming system**
 
 ---
 
@@ -96,54 +120,52 @@ _Features needed for a usable LEGO builder_
 
 _Professional-grade features for power users_
 
-#### Advanced Building Tools
+#### Advanced Transform Tools
 
-- [ ] **Technic beams and connectors**
-- [ ] **Wheels, axles, and mechanical parts**
-- [ ] **Curved and specialty pieces**
-- [ ] **Minifigure support**
-- [ ] **Custom brick creator** (define your own brick shapes)
-- [ ] **Mirror/symmetry tools**
-- [ ] **Pattern fill tools** (quickly fill areas with repeated patterns)
+- [ ] **Free-form rotation** (unrestricted angles with visual feedback)
+- [ ] **Proportional scaling** (maintain aspect ratios)
+- [ ] **Pivot point adjustment** (custom rotation/scale centers)
+- [ ] **Transform constraints** (lock axes during operations)
+- [ ] **Snap to other objects** (align with existing shapes)
+- [ ] **Transform gizmos** (professional 3D manipulation handles)
 
 #### Smart Building Assistance
 
-- [ ] **Auto-snap suggestions** (AI suggests optimal placement)
-- [ ] **Stability analysis** (highlight unstable areas)
-- [ ] **Part count calculator** (real LEGO piece inventory)
-- [ ] **Building instructions generator** (step-by-step assembly guide)
-- [ ] **Structure optimization** (suggest more efficient builds)
+- [ ] **Auto-align tools** (snap to edges, centers, corners)
+- [ ] **Measurement tools** (distance indicators, rulers)
+- [ ] **Construction guides** (temporary helper lines/planes)
+- [ ] **Symmetry tools** (mirror operations)
+- [ ] **Array/pattern tools** (duplicate in patterns)
 
-#### Advanced Interaction
+#### Advanced Materials & Rendering
 
-- [ ] **Multi-touch support** (mobile/tablet building)
-- [ ] **VR/AR support** (WebXR integration)
-- [ ] **Physics simulation** (realistic brick physics)
-- [ ] **Animation timeline** (animate moving parts)
-- [ ] **Collaborative building** (multiple users in real-time)
+- [ ] **Material library** (wood, metal, glass, plastic textures)
+- [ ] **Custom textures** (image-based materials)
+- [ ] **Lighting controls** (multiple light sources)
+- [ ] **Shadow settings** (soft shadows, ambient occlusion)
+- [ ] **Render quality options** (performance vs quality)
 
 #### Professional Tools
 
-- [ ] **Measurement tools** (rulers, dimension display)
-- [ ] **Cross-section view** (see inside complex builds)
-- [ ] **X-ray mode** (see hidden internal structure)
-- [ ] **Blueprint mode** (technical drawing view)
-- [ ] **Parts list export** (BrickLink/LEGO store integration)
+- [ ] **Measurement annotations** (dimension display on shapes)
+- [ ] **Cross-section view** (cut planes for complex scenes)
+- [ ] **Orthographic views** (top, front, side projections)
+- [ ] **Blueprint mode** (technical drawing style)
+- [ ] **Animation timeline** (simple keyframe animation)
 
 #### Export & Sharing
 
-- [ ] **3D model export** (STL, OBJ formats for 3D printing)
+- [ ] **3D model export** (GLTF, OBJ formats)
 - [ ] **High-quality renders** (ray-traced images)
-- [ ] **360° video export**
-- [ ] **Share via URL** (cloud-based project sharing)
-- [ ] **Community gallery** (browse others' creations)
-- [ ] **Import real LEGO sets** (load official set designs)
+- [ ] **360° scene export** (interactive web viewer)
+- [ ] **Share via URL** (cloud-based scene sharing)
+- [ ] **Collaboration tools** (real-time multi-user editing)
 
 #### Performance & Quality
 
-- [ ] **Level-of-detail (LOD) system** (optimize for large builds)
-- [ ] **Occlusion culling** (only render visible bricks)
-- [ ] **Streaming loading** (load large projects progressively)
+- [ ] **Level-of-detail (LOD) system** (optimize for complex scenes)
+- [ ] **Instanced rendering** (efficient duplicate shapes)
+- [ ] **Frustum culling** (only render visible objects)
 - [ ] **Mobile optimization** (touch-friendly interface)
 - [ ] **Offline mode** (PWA capabilities)
 
@@ -153,92 +175,121 @@ _Professional-grade features for power users_
 
 ### Phase 1: Foundation (1-2 weeks)
 
-Complete all **Basic Features** to have a working prototype where users can place, remove, and color basic LEGO bricks.
+Complete all **Basic Features** to have a working prototype where users can place, select, and modify basic geometric shapes.
 
 ### Phase 2: MVP (2-4 weeks)
 
-Add **MVP Features** to create a usable LEGO builder with save/load, proper snapping, and expanded brick library.
+Add **MVP Features** to create a usable geometry builder with advanced editing, save/load, and expanded shape library.
 
 ### Phase 3: Advanced (4-8 weeks)
 
-Implement **Advanced Features** based on user feedback and priorities. Focus on the most requested features first.
+Implement **Advanced Features** based on user feedback and priorities. Focus on transform tools and professional features.
 
 ### Phase 4: Polish & Scale (Ongoing)
 
-Performance optimization, mobile support, and advanced professional tools.
+Performance optimization, mobile support, collaboration features, and advanced rendering.
 
 ---
 
 ## Technical Implementation Notes
 
-### Brick Data Structure
+### Shape Data Structure
 
 ```javascript
 {
   id: "unique-id",
-  type: "brick", // brick, plate, slope, technic
-  dimensions: { width: 2, depth: 4, height: 1 },
+  type: "rectangle", // rectangle, cylinder, sphere, cone, triangle, pyramid
   position: [x, y, z],
-  rotation: 0, // 0, 90, 180, 270 degrees
-  color: "#ff0000",
-  connections: ["stud-id-1", "stud-id-2"] // connected studs
+  rotation: [x, y, z], // Euler angles in radians
+  scale: [x, y, z], // Non-uniform scaling
+  dimensions: {
+    // Shape-specific properties
+    width: 2,
+    height: 1,
+    depth: 3,
+    // For cylinders: radius, height, radialSegments
+    // For spheres: radius, widthSegments, heightSegments
+  },
+  material: {
+    color: "#ff0000",
+    type: "standard", // basic, standard, physical
+    roughness: 0.5,
+    metalness: 0.0,
+    opacity: 1.0
+  },
+  selected: false,
+  visible: true
 }
 ```
 
-### Snapping Algorithm
+### Grid System
 
-1. Raycast from mouse position to find target surface
-2. Convert world position to grid coordinates
-3. Check for valid stud positions on target brick
-4. Validate placement (no overlaps, proper support)
-5. Snap new brick to nearest valid position
+```javascript
+const GRID_SIZES = [0.25, 0.5, 1, 2, 5]; // Available grid spacings
+const DEFAULT_GRID_SIZE = 1;
+
+function snapToGrid(position, gridSize) {
+  return [
+    Math.round(position[0] / gridSize) * gridSize,
+    Math.round(position[1] / gridSize) * gridSize,
+    Math.round(position[2] / gridSize) * gridSize,
+  ];
+}
+```
+
+### Transform Handle System
+
+- **Position**: XYZ arrow gizmos for movement
+- **Scale**: Corner/edge handles for resizing
+- **Rotation**: Ring gizmos around each axis
+- **Unified**: Combined transform tool (like Blender)
 
 ### Performance Considerations
 
-- Use instanced rendering for repeated geometry (studs)
-- Implement frustum culling for large builds
-- Consider using simplified physics for stacking validation
-- Optimize material sharing between similar bricks
+- Use instanced rendering for identical shapes
+- Implement LOD for complex geometries
+- Use simplified collision shapes for interaction
+- Optimize material sharing between similar shapes
+- Consider using workers for heavy calculations
 
 ---
 
 ## Success Metrics
 
-- **Basic**: User can build simple structures (house, car)
-- **MVP**: User can save/load projects and build complex models
-- **Advanced**: User can create professional-quality builds with custom pieces and animations
+- **Basic**: User can create simple structures (house, tower, furniture)
+- **MVP**: User can build complex architectural models with precision
+- **Advanced**: User can create professional-quality 3D scenes with custom materials and lighting
 
-Start with the Basic Features checklist and work your way up. Each tier builds upon the previous one, ensuring a solid foundation for your LEGO builder app!
+Start with the Basic Features checklist and work your way up. Each tier builds upon the previous one, ensuring a solid foundation for your 3D geometry builder!
 
+## File Structure
+
+```
 src/
 ├── components/
-│ ├── 3D/
-│ │ ├── LegoBrick.jsx
-│ │ ├── Scene.jsx
-│ │ └── Controls.jsx
-│ ├── UI/
-│ │ ├── BrickSelector.jsx
-│ │ ├── ColorPicker.jsx
-│ │ ├── Toolbar.jsx
-│ │ └── SaveLoad.jsx
-│ └── Layout/
-│ ├── Header.jsx
-│ └── Sidebar.jsx
+│   ├── 3D/
+│   │   ├── Shape.jsx
+│   │   ├── Scene.jsx
+│   │   ├── Grid.jsx
+│   │   ├── TransformControls.jsx
+│   │   └── Lights.jsx
+│   ├── UI/
+│   │   ├── ShapePicker.jsx
+│   │   ├── PropertyPanel.jsx
+│   │   ├── ColorPicker.jsx
+│   │   ├── Toolbar.jsx
+│   │   └── SaveLoad.jsx
+│   └── Layout/
+│       ├── Header.jsx
+│       └── Sidebar.jsx
 ├── store/
-│ ├── useBrickStore.js
-│ ├── useUIStore.js
-│ └── index.js
-├── styles/
-│ ├── main.scss
-│ ├── components/
-│ │ ├── \_brick-selector.scss
-│ │ ├── \_toolbar.scss
-│ │ └── \_scene.scss
-│ └── utils/
-│ ├── \_variables.scss
-│ └── \_mixins.scss
+│   ├── useShapeStore.js
+│   ├── useUIStore.js
+│   └── index.js
 ├── utils/
-│ ├── brickUtils.js
-│ ├── snapUtils.js
-│ └── constants.js
+│   ├── shapeUtils.js
+│   ├── gridUtils.js
+│   ├── transformUtils.js
+│   └── constants.js
 └── App.jsx
+```

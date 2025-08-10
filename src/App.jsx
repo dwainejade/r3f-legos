@@ -19,10 +19,9 @@ const GeometryBuilder = () => {
       {/* 3D Scene */}
       <Scene />
 
-
-  {/* UI Panels (conditionally rendered via Toolbar tabs/toggles) */}
-  {/* Panels will be toggled from the Toolbar, so only Toolbar is always present */}
-  <Toolbar />
+      {/* UI Panels (conditionally rendered via Toolbar tabs/toggles) */}
+      {/* Panels will be toggled from the Toolbar, so only Toolbar is always present */}
+      <Toolbar />
 
       {/* Background Overlay */}
     </div>

@@ -1,287 +1,126 @@
 import { create } from "zustand";
-import { devtools, subscribeWithSelector } from "zustand/middleware";
 
-export const LEGO_UNIT = 0.8;
-export const BRICK_HEIGHT = 0.96;
-export const BASEPLATE_SIZE = 200; // studs
-export const BASEPLATE_HEIGHT = 0.32;
-export const BASEPLATE_COLOR = "#00aa00";
-export const STUD_RADIUS = 0.2;
-export const STUD_HEIGHT = 0.17;
-
-// Import BRICK_TYPES - you might want to move this to a shared constants file
+// Enhanced brick types with all shapes
 export const BRICK_TYPES = {
-  "1x1": { width: 1, depth: 1, height: 1 },
-  "1x2": { width: 1, depth: 2, height: 1 },
-  "1x4": { width: 1, depth: 4, height: 1 },
-  "2x2": { width: 2, depth: 2, height: 1 },
-  "2x4": { width: 2, depth: 4, height: 1 },
-  "2x6": { width: 2, depth: 6, height: 1 },
-  "2x8": { width: 2, depth: 8, height: 1 },
+  // Basic bricks
+  "1x1": { width: 1, depth: 1, height: 1, shape: "brick" },
+  "1x2": { width: 1, depth: 2, height: 1, shape: "brick" },
+  "1x4": { width: 1, depth: 4, height: 1, shape: "brick" },
+  "2x2": { width: 2, depth: 2, height: 1, shape: "brick" },
+  "2x4": { width: 2, depth: 4, height: 1, shape: "brick" },
+  "2x6": { width: 2, depth: 6, height: 1, shape: "brick" },
+  "2x8": { width: 2, depth: 8, height: 1, shape: "brick" },
+
+  // Extended rectangular bricks
+  "1x3": { width: 1, depth: 3, height: 1, shape: "brick" },
+  "1x6": { width: 1, depth: 6, height: 1, shape: "brick" },
+  "1x8": { width: 1, depth: 8, height: 1, shape: "brick" },
+  "2x3": { width: 2, depth: 3, height: 1, shape: "brick" },
+  "3x3": { width: 3, depth: 3, height: 1, shape: "brick" },
+  "4x4": { width: 4, depth: 4, height: 1, shape: "brick" },
+  "3x6": { width: 3, depth: 6, height: 1, shape: "brick" },
+  "4x8": { width: 4, depth: 8, height: 1, shape: "brick" },
+
+  // Specialty shapes
+  corner: { width: 2, depth: 2, height: 1, shape: "corner" },
+  slope: { width: 2, depth: 2, height: 2, shape: "slope" },
+  arch: { width: 3, depth: 1, height: 3, shape: "arch" },
+  round: { width: 2, depth: 2, height: 1, shape: "round" },
+  wedge: { width: 2, depth: 3, height: 1, shape: "wedge" },
+
+  // Plates (thinner bricks)
+  "plate-1x1": { width: 1, depth: 1, height: 0.3, shape: "plate" },
+  "plate-1x2": { width: 1, depth: 2, height: 0.3, shape: "plate" },
+  "plate-2x2": { width: 2, depth: 2, height: 0.3, shape: "plate" },
+  "plate-2x4": { width: 2, depth: 4, height: 0.3, shape: "plate" },
+
+  // Tall bricks
+  "tall-1x1": { width: 1, depth: 1, height: 3, shape: "tall" },
+  "tall-1x2": { width: 1, depth: 2, height: 3, shape: "tall" },
+  "tall-2x2": { width: 2, depth: 2, height: 3, shape: "tall" },
 };
 
-// Enhanced snapToGrid function that handles bounds, collision, and stacking
-export const snapToGrid = (
-  worldPosition,
-  brickType,
-  baseplateSize,
-  occupiedStuds,
-  baseplateHeight = 0.32,
-  rotationY = 0
-) => {
-  const dims = BRICK_TYPES[brickType];
-  if (!dims) return { position: [0, 0, 0], isValid: false, layer: 0 };
-
-  const gridSize = LEGO_UNIT;
-
-  // --- Compute the stud-origin used by your Baseplate ---
-  const studOrigin = -((baseplateSize - 1) / 2); // in studs
-
-  // Convert world coords to stud units relative to the stud origin
-  const xStudWorld = worldPosition.x / gridSize;
-  const zStudWorld = worldPosition.z / gridSize;
-  const xStudLocal = xStudWorld - studOrigin;
-  const zStudLocal = zStudWorld - studOrigin;
-
-  // Normalize rotation to nearest quarter-turn (0, 90, 180, 270)
-  const quarterTurns =
-    ((Math.round((rotationY % (2 * Math.PI)) / (Math.PI / 2)) % 4) + 4) % 4;
-
-  // Swap width/depth parity if rotated by odd number of quarter turns
-  let width = dims.width;
-  let depth = dims.depth;
-  if (quarterTurns % 2 === 1) {
-    [width, depth] = [depth, width];
-  }
-
-  // Parity offset in stud-units: even -> 0.5, odd -> 0
-  const xParityOffset = width % 2 === 0 ? 0.5 : 0;
-  const zParityOffset = depth % 2 === 0 ? 0.5 : 0;
-
-  // Snap in local stud space (relative to studOrigin), then convert back
-  const snappedXStudLocal =
-    Math.round(xStudLocal - xParityOffset) + xParityOffset;
-  const snappedZStudLocal =
-    Math.round(zStudLocal - zParityOffset) + zParityOffset;
-
-  const snappedXStudWorld = snappedXStudLocal + studOrigin;
-  const snappedZStudWorld = snappedZStudLocal + studOrigin;
-
-  const snappedX = snappedXStudWorld * gridSize;
-  const snappedZ = snappedZStudWorld * gridSize;
-
-  // Bounds check first (world units)
-  const brickHalfWidth = (width * gridSize) / 2;
-  const brickHalfDepth = (depth * gridSize) / 2;
-  const baseplateHalfSize = (baseplateSize * gridSize) / 2;
-
-  const minX = snappedX - brickHalfWidth;
-  const maxX = snappedX + brickHalfWidth;
-  const minZ = snappedZ - brickHalfDepth;
-  const maxZ = snappedZ + brickHalfDepth;
-
-  const withinBounds =
-    minX >= -baseplateHalfSize &&
-    maxX <= baseplateHalfSize &&
-    minZ >= -baseplateHalfSize &&
-    maxZ <= baseplateHalfSize;
-
-  if (!withinBounds) {
-    return { position: [snappedX, 0, snappedZ], isValid: false, layer: 0 };
-  }
-
-  // --- Collision detection and stacking ---
-  // Convert world position to stud coordinates for collision detection
-  const studX = Math.round(snappedXStudWorld);
-  const studZ = Math.round(snappedZStudWorld);
-
-  let layer = 0;
-
-  // Find the highest available layer by checking collisions
-  while (true) {
-    let collision = false;
-
-    // Check all studs that this brick would occupy
-    for (let dx = 0; dx < width; dx++) {
-      for (let dz = 0; dz < depth; dz++) {
-        const checkStudX = studX + dx - Math.floor(width / 2);
-        const checkStudZ = studZ + dz - Math.floor(depth / 2);
-        const studKey = `${checkStudX},${layer},${checkStudZ}`;
-
-        if (occupiedStuds.has(studKey)) {
-          collision = true;
-          break;
-        }
-      }
-      if (collision) break;
-    }
-
-    if (!collision) break;
-    layer++;
-
-    // Prevent infinite stacking (safety limit)
-    if (layer > 20) {
-      return { position: [snappedX, 0, snappedZ], isValid: false, layer: 0 };
-    }
-  }
-
-  // Calculate Y position based on layer
-  const snappedY =
-    baseplateHeight / 2 + BRICK_HEIGHT * layer + BRICK_HEIGHT / 2;
-
-  return {
-    position: [snappedX, snappedY, snappedZ],
-    isValid: true,
-    layer,
-    studCoords: { x: studX, z: studZ },
-    dimensions: { width, depth },
-  };
+// Default colors for each brick type
+export const BRICK_COLORS = {
+  "1x1": "#ff0000", // Red
+  "1x2": "#0055bf", // Blue
+  "1x4": "#00af4d", // Green
+  "2x2": "#ffd700", // Yellow
+  "2x4": "#ff8c00", // Orange
+  "2x6": "#81007b", // Purple
+  "2x8": "#ff69b4", // Pink
+  "1x3": "#20b2aa", // Light Sea Green
+  "1x6": "#dc143c", // Crimson
+  "1x8": "#8a2be2", // Blue Violet
+  "2x3": "#ff1493", // Deep Pink
+  "3x3": "#32cd32", // Lime Green
+  "4x4": "#ff4500", // Orange Red
+  "3x6": "#4169e1", // Royal Blue
+  "4x8": "#ff6347", // Tomato
+  corner: "#8b4513", // Saddle Brown
+  slope: "#9932cc", // Dark Orchid
+  arch: "#008b8b", // Dark Cyan
+  round: "#b22222", // Fire Brick
+  wedge: "#556b2f", // Dark Olive Green
+  "plate-1x1": "#87ceeb", // Sky Blue
+  "plate-1x2": "#dda0dd", // Plum
+  "plate-2x2": "#f0e68c", // Khaki
+  "plate-2x4": "#ffa07a", // Light Salmon
+  "tall-1x1": "#2f4f4f", // Dark Slate Gray
+  "tall-1x2": "#8fbc8f", // Dark Sea Green
+  "tall-2x2": "#cd853f", // Peru
 };
 
-// Helper function to get occupied studs for a brick
-const getBrickOccupiedStuds = (brick) => {
-  const dims = BRICK_TYPES[brick.type];
-  const [x, y, z] = brick.position;
-  const layer = Math.round((y - BRICK_HEIGHT / 2) / BRICK_HEIGHT);
+const useBrickStore = create((set, get) => ({
+  // Brick selection state
+  selectedBrickType: "1x1",
+  selectedColor: BRICK_COLORS["1x1"],
 
-  // Convert world position to stud coordinates
-  const studX = Math.round(x / LEGO_UNIT);
-  const studZ = Math.round(z / LEGO_UNIT);
-
-  const studs = [];
-  for (let dx = 0; dx < dims.width; dx++) {
-    for (let dz = 0; dz < dims.depth; dz++) {
-      const checkStudX = studX + dx - Math.floor(dims.width / 2);
-      const checkStudZ = studZ + dz - Math.floor(dims.depth / 2);
-      studs.push(`${checkStudX},${layer},${checkStudZ}`);
+  // Actions
+  setBrickType: (brickType) => {
+    if (BRICK_TYPES[brickType]) {
+      set({
+        selectedBrickType: brickType,
+        selectedColor: BRICK_COLORS[brickType] || "#6d6e70",
+      });
     }
-  }
+  },
 
-  return studs;
-};
+  setColor: (color) => set({ selectedColor: color }),
 
-const useBrickStore = create()(
-  devtools(
-    subscribeWithSelector((set, get) => ({
-      // State
-      bricks: [],
-      occupiedStuds: new Set(),
-      selectedBrickId: null,
-      selectedBrickType: "2x4",
-      selectedColor: "#ff0000",
-      buildMode: "place", // 'place', 'remove', 'select'
-      baseplateSize: 64, // Add baseplate size to store
+  // Helper functions
+  getBrickDimensions: (brickType) => {
+    return BRICK_TYPES[brickType] || BRICK_TYPES["1x1"];
+  },
 
-      // Actions
-      addBrick: (brick) => {
-        const { occupiedStuds, baseplateSize } = get();
+  getBrickColor: (brickType) => {
+    return BRICK_COLORS[brickType] || "#6d6e70";
+  },
 
-        // Use enhanced snapToGrid with collision detection
-        const snapResult = snapToGrid(
-          { x: brick.position[0], y: brick.position[1], z: brick.position[2] },
-          brick.type,
-          baseplateSize,
-          occupiedStuds
-        );
+  getCurrentBrick: () => {
+    const { selectedBrickType, selectedColor } = get();
+    return {
+      type: selectedBrickType,
+      dimensions: BRICK_TYPES[selectedBrickType],
+      color: selectedColor,
+    };
+  },
 
-        if (!snapResult.isValid) {
-          console.warn("Cannot place brick: invalid position or collision");
-          return;
-        }
+  // Create a brick shape object ready for the shape store
+  createBrickShape: (position = [0, 0, 0], rotation = 0) => {
+    const { selectedBrickType, selectedColor } = get();
+    const dimensions = BRICK_TYPES[selectedBrickType];
 
-        // Create the new brick with snapped position
-        const newBrick = {
-          ...brick,
-          id: crypto.randomUUID(),
-          position: snapResult.position,
-          layer: snapResult.layer,
-        };
-
-        // Get the studs this brick will occupy
-        const brickStuds = getBrickOccupiedStuds(newBrick);
-
-        // Add occupied studs to the set
-        const newOccupiedStuds = new Set(occupiedStuds);
-        brickStuds.forEach((stud) => newOccupiedStuds.add(stud));
-
-        set((state) => ({
-          bricks: [...state.bricks, newBrick],
-          occupiedStuds: newOccupiedStuds,
-        }));
-      },
-
-      removeBrick: (id) => {
-        const brick = get().bricks.find((b) => b.id === id);
-        if (!brick) return;
-
-        const { occupiedStuds } = get();
-
-        // Get the studs this brick occupies
-        const brickStuds = getBrickOccupiedStuds(brick);
-
-        // Remove occupied studs from the set
-        const newOccupiedStuds = new Set(occupiedStuds);
-        brickStuds.forEach((stud) => newOccupiedStuds.delete(stud));
-
-        set((state) => ({
-          bricks: state.bricks.filter((brick) => brick.id !== id),
-          occupiedStuds: newOccupiedStuds,
-          selectedBrickId:
-            state.selectedBrickId === id ? null : state.selectedBrickId,
-        }));
-      },
-
-      snapPoint: (point) => {
-        const { selectedBrickType, occupiedStuds, baseplateSize } = get();
-        return snapToGrid(
-          point,
-          selectedBrickType,
-          baseplateSize,
-          occupiedStuds
-        );
-      },
-
-      updateBrick: (id, updates) =>
-        set((state) => ({
-          bricks: state.bricks.map((brick) =>
-            brick.id === id ? { ...brick, ...updates } : brick
-          ),
-        })),
-
-      selectBrick: (id) => set({ selectedBrickId: id }),
-      setBrickType: (type) => set({ selectedBrickType: type }),
-      setColor: (color) => set({ selectedColor: color }),
-      setBuildMode: (mode) => set({ buildMode: mode }),
-
-      clearAll: () =>
-        set({
-          bricks: [],
-          occupiedStuds: new Set(),
-          selectedBrickId: null,
-        }),
-
-      // Update baseplate size
-      setBaseplateSize: (size) => set({ baseplateSize: size }),
-
-      // Utility getters
-      getSelectedBrick: () => {
-        const { bricks, selectedBrickId } = get();
-        return bricks.find((brick) => brick.id === selectedBrickId);
-      },
-
-      getBricksByType: (type) => {
-        const { bricks } = get();
-        return bricks.filter((brick) => brick.type === type);
-      },
-
-      // Debug helper
-      debugOccupiedStuds: () => {
-        const { occupiedStuds } = get();
-        console.log("Occupied studs:", Array.from(occupiedStuds));
-      },
-    })),
-    { name: "brick-store" }
-  )
-);
+    return {
+      type: "brick",
+      brickType: selectedBrickType,
+      dimensions,
+      color: selectedColor,
+      position,
+      rotation,
+      scale: [1, 1, 1],
+    };
+  },
+}));
 
 export default useBrickStore;

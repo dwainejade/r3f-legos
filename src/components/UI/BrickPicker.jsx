@@ -9,6 +9,41 @@ const BRICK_SIZE_COLORS = {
   "2x4": "#ff8c00", // Orange for 2x4
   "2x6": "#81007b", // Purple for 2x6
   "2x8": "#ff69b4", // Pink for 2x8
+  // New shapes
+  "1x3": "#20b2aa", // Light Sea Green
+  "1x6": "#dc143c", // Crimson
+  "1x8": "#8a2be2", // Blue Violet
+  "2x3": "#ff1493", // Deep Pink
+  "3x3": "#32cd32", // Lime Green
+  "4x4": "#ff4500", // Orange Red
+  "3x6": "#4169e1", // Royal Blue
+  "4x8": "#ff6347", // Tomato
+  // Specialty shapes
+  corner: "#8b4513", // Saddle Brown
+  slope: "#9932cc", // Dark Orchid
+  arch: "#008b8b", // Dark Cyan
+  round: "#b22222", // Fire Brick
+  wedge: "#556b2f", // Dark Olive Green
+};
+
+// Expanded brick types with more shapes
+const EXPANDED_BRICK_TYPES = {
+  ...BRICK_TYPES,
+  // Additional rectangular bricks
+  "1x3": { width: 1, depth: 3, height: 1 },
+  "1x6": { width: 1, depth: 6, height: 1 },
+  "1x8": { width: 1, depth: 8, height: 1 },
+  "2x3": { width: 2, depth: 3, height: 1 },
+  "3x3": { width: 3, depth: 3, height: 1 },
+  "4x4": { width: 4, depth: 4, height: 1 },
+  "3x6": { width: 3, depth: 6, height: 1 },
+  "4x8": { width: 4, depth: 8, height: 1 },
+  // Specialty shapes
+  corner: { width: 2, depth: 2, height: 1, shape: "corner" },
+  slope: { width: 2, depth: 2, height: 2, shape: "slope" },
+  arch: { width: 3, depth: 1, height: 3, shape: "arch" },
+  round: { width: 2, depth: 2, height: 1, shape: "round" },
+  wedge: { width: 2, depth: 3, height: 1, shape: "wedge" },
 };
 
 // Get default color for a brick type
@@ -18,18 +53,19 @@ export const getBrickDefaultColor = (brickType) => {
 
 // Individual brick preview component
 const BrickPreview = ({ type, isSelected, onClick }) => {
-  const dims = BRICK_TYPES[type];
+  const dims = EXPANDED_BRICK_TYPES[type];
   const color = getBrickDefaultColor(type);
+  const isSpecialty = dims.shape !== undefined;
 
   // Calculate visual representation size based on brick dimensions
-  const baseSize = 20;
-  const maxSize = 48;
+  const baseSize = 16;
+  const maxSize = 36;
   const width = Math.min(
-    Math.max(baseSize + dims.width * 8, baseSize),
+    Math.max(baseSize + dims.width * 4, baseSize),
     maxSize
   );
   const height = Math.min(
-    Math.max(baseSize + dims.depth * 8, baseSize),
+    Math.max(baseSize + dims.depth * 4, baseSize),
     maxSize
   );
 
@@ -40,23 +76,23 @@ const BrickPreview = ({ type, isSelected, onClick }) => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "12px 8px",
+        padding: "8px 6px",
         background: isSelected ? "rgba(0, 168, 204, 0.2)" : "transparent",
         border: isSelected
           ? "2px solid #00a8cc"
-          : "2px solid rgba(255, 255, 255, 0.1)",
-        borderRadius: "8px",
+          : "1px solid rgba(255, 255, 255, 0.1)",
+        borderRadius: "6px",
         cursor: "pointer",
         transition: "all 0.2s ease",
-        minWidth: "80px",
+        minWidth: "60px",
         position: "relative",
         overflow: "hidden",
       }}
       onMouseEnter={(e) => {
         if (!isSelected) {
           e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.3)";
         }
       }}
       onMouseLeave={(e) => {
@@ -78,7 +114,7 @@ const BrickPreview = ({ type, isSelected, onClick }) => {
             bottom: 0,
             background:
               "linear-gradient(45deg, rgba(0, 168, 204, 0.1), rgba(0, 168, 204, 0.3))",
-            borderRadius: "8px",
+            borderRadius: "6px",
             zIndex: -1,
           }}
         />
@@ -90,68 +126,71 @@ const BrickPreview = ({ type, isSelected, onClick }) => {
           width: `${width}px`,
           height: `${height}px`,
           background: `linear-gradient(135deg, ${color}, ${color}dd)`,
-          borderRadius: "4px",
+          borderRadius: isSpecialty ? "50%" : "3px",
           border: "1px solid rgba(0, 0, 0, 0.4)",
           position: "relative",
-          marginBottom: "8px",
+          marginBottom: "4px",
           boxShadow: isSelected
-            ? `0 4px 8px rgba(0, 0, 0, 0.3), 0 0 16px ${color}44`
-            : "0 2px 4px rgba(0, 0, 0, 0.2)",
+            ? `0 2px 6px rgba(0, 0, 0, 0.3), 0 0 12px ${color}44`
+            : "0 1px 3px rgba(0, 0, 0, 0.2)",
+          clipPath:
+            isSpecialty && dims.shape === "wedge"
+              ? "polygon(0 100%, 100% 100%, 50% 0)"
+              : "none",
         }}
       >
-        {/* Add studs visualization */}
-        <div
-          style={{
-            position: "absolute",
-            top: "3px",
-            left: "3px",
-            right: "3px",
-            bottom: "3px",
-            display: "grid",
-            gridTemplateColumns: `repeat(${dims.width}, 1fr)`,
-            gridTemplateRows: `repeat(${dims.depth}, 1fr)`,
-            gap: "2px",
-          }}
-        >
-          {Array.from({ length: dims.width * dims.depth }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                background: "rgba(255, 255, 255, 0.4)",
-                borderRadius: "50%",
-                border: "1px solid rgba(0, 0, 0, 0.3)",
-                boxShadow: "inset 0 1px 2px rgba(255, 255, 255, 0.3)",
-              }}
-            />
-          ))}
-        </div>
+        {/* Special shape indicators */}
+        {isSpecialty && dims.shape === "arch" && (
+          <div
+            style={{
+              position: "absolute",
+              top: "20%",
+              left: "20%",
+              right: "20%",
+              bottom: "40%",
+              background: "rgba(0, 0, 0, 0.3)",
+              borderRadius: "50% 50% 0 0",
+            }}
+          />
+        )}
+        {isSpecialty && dims.shape === "slope" && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              background: `linear-gradient(45deg, transparent 40%, ${color}aa 50%)`,
+              borderRadius: "3px",
+            }}
+          />
+        )}
       </div>
 
       {/* Brick type label */}
       <div
         style={{
-          fontSize: "11px",
+          fontSize: "9px",
           color: isSelected ? "#ffffff" : "#cccccc",
           fontWeight: isSelected ? "bold" : "500",
           textAlign: "center",
           textShadow: isSelected ? "0 1px 2px rgba(0, 0, 0, 0.5)" : "none",
+          lineHeight: 1.2,
         }}
       >
         {type}
       </div>
-
-      {/* Dimensions */}
-      <div
-        style={{
-          fontSize: "9px",
-          color: isSelected ? "#cccccc" : "#888888",
-          textAlign: "center",
-        }}
-      >
-        {dims.width}×{dims.depth}×{dims.height}
-      </div>
     </div>
   );
+};
+
+// Category organization
+const SHAPE_CATEGORIES = {
+  Basic: ["1x1", "1x2", "1x4", "2x2", "2x4"],
+  Extended: ["1x3", "1x6", "1x8", "2x3", "2x6", "2x8"],
+  Large: ["3x3", "4x4", "3x6", "4x8"],
+  Special: ["corner", "slope", "arch", "round", "wedge"],
 };
 
 // Main BrickPicker component
@@ -167,74 +206,115 @@ const BrickPicker = () => {
   return (
     <div
       style={{
-        position: "absolute",
-        top: "20px",
-        right: "20px",
         background: "rgba(45, 45, 45, 0.95)",
-        padding: "16px",
+        padding: "12px 20px",
         borderRadius: "12px",
         color: "white",
         fontFamily: "Inter, sans-serif",
         backdropFilter: "blur(10px)",
         border: "1px solid rgba(255, 255, 255, 0.1)",
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
-        maxWidth: "400px",
+        width: "90vw",
+        maxWidth: "1200px",
+        minWidth: "800px",
       }}
     >
+      {/* Header */}
       <div
         style={{
-          fontWeight: "bold",
-          marginBottom: "16px",
-          fontSize: "16px",
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
-          gap: "8px",
-          color: "#ffffff",
-        }}
-      >
-        🧱 Pick a Brick
-      </div>
-
-      {/* Brick grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))",
-          gap: "8px",
-          maxWidth: "350px",
-        }}
-      >
-        {Object.keys(BRICK_TYPES).map((type) => (
-          <BrickPreview
-            key={type}
-            type={type}
-            isSelected={selectedBrickType === type}
-            onClick={() => handleBrickSelect(type)}
-          />
-        ))}
-      </div>
-
-      {/* Selected brick info */}
-      <div
-        style={{
-          marginTop: "16px",
-          padding: "12px",
-          background: "rgba(0, 168, 204, 0.1)",
-          borderRadius: "8px",
-          border: "1px solid rgba(0, 168, 204, 0.3)",
+          marginBottom: "12px",
         }}
       >
         <div
-          style={{ fontSize: "12px", color: "#cccccc", marginBottom: "4px" }}
+          style={{
+            fontWeight: "bold",
+            fontSize: "14px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            color: "#ffffff",
+          }}
         >
-          Selected:
+          🧱 Pick a Shape
         </div>
-        <div style={{ fontSize: "14px", fontWeight: "bold", color: "#ffffff" }}>
-          {selectedBrickType}
+
+        {/* Selected brick info - compact */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            padding: "6px 12px",
+            background: "rgba(0, 168, 204, 0.1)",
+            borderRadius: "6px",
+            border: "1px solid rgba(0, 168, 204, 0.3)",
+          }}
+        >
+          <div style={{ fontSize: "12px", color: "#cccccc" }}>
+            Selected:{" "}
+            <span style={{ fontWeight: "bold", color: "#ffffff" }}>
+              {selectedBrickType}
+            </span>
+          </div>
+          <div
+            style={{
+              width: "16px",
+              height: "16px",
+              background: getBrickDefaultColor(selectedBrickType),
+              borderRadius: "3px",
+              border: "1px solid rgba(0, 0, 0, 0.3)",
+            }}
+          />
         </div>
-        <div style={{ fontSize: "11px", color: "#888888" }}>
-          Color: {getBrickDefaultColor(selectedBrickType)}
-        </div>
+      </div>
+
+      {/* Shape categories in horizontal layout */}
+      <div
+        style={{
+          display: "flex",
+          gap: "16px",
+          overflowX: "auto",
+          paddingBottom: "4px",
+        }}
+      >
+        {Object.entries(SHAPE_CATEGORIES).map(([category, shapes]) => (
+          <div key={category} style={{ minWidth: "fit-content" }}>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#888",
+                marginBottom: "6px",
+                textAlign: "center",
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
+              {category}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: "4px",
+                flexWrap: "wrap",
+                justifyContent: "center",
+                maxWidth: "250px",
+              }}
+            >
+              {shapes.map((type) => (
+                <BrickPreview
+                  key={type}
+                  type={type}
+                  isSelected={selectedBrickType === type}
+                  onClick={() => handleBrickSelect(type)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

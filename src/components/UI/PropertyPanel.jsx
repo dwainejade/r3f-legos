@@ -14,9 +14,6 @@ const PropertyPanel = () => {
     return (
       <div
         style={{
-          position: "absolute",
-          top: "20px",
-          right: "20px",
           background: "rgba(45, 45, 45, 0.95)",
           padding: "20px",
           borderRadius: "12px",
@@ -70,9 +67,6 @@ const PropertyPanel = () => {
   return (
     <div
       style={{
-        position: "absolute",
-        top: "20px",
-        right: "20px",
         background: "rgba(45, 45, 45, 0.95)",
         padding: "20px",
         borderRadius: "12px",
